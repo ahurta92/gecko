@@ -268,11 +268,11 @@ class DaltonParser:
 
     def parse_geometry(self) -> qcel.models.Molecule:
         try:
-            self.molecule = parse_last_molecular_geometry(self.lines)
-        except Exception:
             mol, basis = parse_mol_block_from_output(self.lines)
             self.molecule = mol
             self.mol_block_basis = basis
+        except Exception:
+            self.molecule = parse_last_molecular_geometry(self.lines)
         return self.molecule
 
     def parse_geometry_from_mol_block(self) -> qcel.models.Molecule:

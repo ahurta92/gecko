@@ -15,3 +15,13 @@ This does **not** address:
 
 If matching must tolerate rigid transforms, implement a geometry key (e.g., distance-matrix
 based) and do not rely solely on QCElemental hashes.
+
+## Molecule identifiers
+
+- `geom_id` now comes directly from `qcelemental.models.Molecule.get_hash()`.
+- `mol_id` now comes from `qcelemental.models.Molecule.formula` (composition only).
+
+This means:
+- Molecule parsing + canonicalization is required for stable IDs across codes.
+- `mol_id` does not distinguish isomers; it is composition-only.
+- `geom_id` is geometry-sensitive and reflects exact coordinates after canonicalization.

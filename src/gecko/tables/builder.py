@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from gecko.core.model import Calculation
-from gecko.ids import geom_id, mol_id
+from gecko.ids import geom_id_from_molecule, mol_id_from_molecule
 from gecko.tables.extractors import (
     extract_alpha,
     extract_beta,
@@ -29,7 +29,9 @@ class TableBuilder:
             if qmol is None:
                 continue
 
-            gid = calc.meta.get("geom_id") or geom_id(qmol)
+            gid = calc.meta.get("geom_id") or geom_id_from_molecule(qmol)
+            if gid is None:
+                continue
             if gid in seen:
                 continue
             seen.add(gid)
@@ -38,7 +40,7 @@ class TableBuilder:
             rows.append(
                 {
                     "geom_id": gid,
-                    "mol_id": calc.meta.get("mol_id") or mol_id(calc),
+                    "mol_id": calc.meta.get("mol_id") or mol_id_from_molecule(qmol),
                     "label": calc.meta.get("label"),
                     "symbols": list(qmol.symbols),
                     "geometry_angstrom": geometry.tolist(),

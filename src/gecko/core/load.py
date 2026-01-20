@@ -45,9 +45,9 @@ def _finalize_calc(calc: Calculation, mol_resolver: Any | None) -> Calculation:
         calc.meta.setdefault("mol_source", "missing")
 
     if calc.molecule is not None and calc.meta.get("molecule_id") is None:
-        from gecko.ids import geom_id
+        from gecko.ids import geom_id_from_molecule
 
-        calc.meta["molecule_id"] = geom_id(calc.molecule)
+        calc.meta["molecule_id"] = geom_id_from_molecule(calc.molecule)
 
     return calc
 

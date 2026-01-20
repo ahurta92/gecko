@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from gecko.core.model import Calculation
-from gecko.ids import calc_id, geom_id, mol_id
+from gecko.ids import calc_id, geom_id_from_molecule, mol_id_from_molecule
 from gecko.molecule_resolver import resolve_molecule
 from gecko.mol.resolver import mol_label_from_calc
 
@@ -28,10 +28,10 @@ def enrich(
         )
 
     calc.meta["calc_id"] = calc_id(calc)
-    calc.meta["mol_id"] = mol_id(calc)
+    calc.meta["mol_id"] = mol_id_from_molecule(calc.molecule)
 
     if calc.molecule is not None:
-        calc.meta["geom_id"] = geom_id(calc.molecule)
+        calc.meta["geom_id"] = geom_id_from_molecule(calc.molecule)
         calc.meta["molecule_id"] = calc.meta.get("geom_id")
         calc.meta.setdefault("mol_source", "embedded")
         calc.meta.setdefault("molecule_source", "out")
