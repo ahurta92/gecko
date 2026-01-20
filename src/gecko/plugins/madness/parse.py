@@ -6,7 +6,6 @@ from typing import Any
 import numpy as np
 
 from gecko.core.model import Calculation
-from gecko.molecule_id import compute_molecule_id
 
 
 def _beta_df_to_tensor(beta_df) -> dict[str, Any]:
@@ -91,8 +90,6 @@ def parse_run(calc: Calculation) -> None:
                 "MADNESS output missing molecule; input.json not found or invalid."
             )
 
-    if calc.molecule is not None:
-        calc.meta["molecule_id"] = compute_molecule_id(calc.molecule)
 
 
 def _select_input_json(calc: Calculation) -> tuple[Path | None, str | None]:
@@ -139,9 +136,14 @@ def _load_molecule_from_input(path: Path | None):
     coords = np.asarray(geometry, dtype=float)
     if isinstance(units, str) and units.lower() in ("bohr", "atomic", "au"):
         coords = coords * qcel.constants.bohr2angstroms
-    return qcel.models.Molecule(
-        symbols=list(symbols),
-        geometry=coords,
-        charge=mol.get("charge"),
-        multiplicity=mol.get("multiplicity"),
-    )
+    kwargs = {
+        "symbols": list(symbols),
+        "geometry": coords,
+    }
+    mol_charge = mol.get("charge")
+    mol_mult = mol.get("multiplicity")
+    if mol_charge is not None:
+        kwargs["molecular_charge"] = mol_charge
+    if mol_mult is not None:
+        kwargs["molecular_multiplicity"] = mol_mult
+    return qcel.models.Molecule(**kwargs)

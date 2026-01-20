@@ -20,10 +20,12 @@ def compute_molecule_id(mol: qcelemental.models.Molecule) -> str:
 
     charge = np.int64(int(getattr(mol, "charge", 0))).tobytes()
     multiplicity = np.int64(int(getattr(mol, "multiplicity", 1))).tobytes()
+    instance_id = np.int64(id(mol)).tobytes()
 
     hasher = hashlib.sha256()
     hasher.update(symbols_bytes)
     hasher.update(geometry_bytes)
     hasher.update(charge)
     hasher.update(multiplicity)
+    hasher.update(instance_id)
     return f"mol:{hasher.hexdigest()[:16]}"

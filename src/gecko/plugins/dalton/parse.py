@@ -6,7 +6,6 @@ from typing import Any
 import numpy as np
 
 from gecko.core.model import Calculation
-from gecko.molecule_id import compute_molecule_id
 from gecko.plugins.dalton.legacy.dalton import DaltonParser, parse_polarizability_section
 
 
@@ -36,6 +35,17 @@ def split_label_basis_from_outname(name: str) -> tuple[str | None, str | None]:
     stem = name
     if stem.endswith(".out"):
         stem = stem[:-4]
+    import re
+
+    basis_patterns = [
+        re.compile(r"^(?P<label>.+?)-(?P<basis>(?:d-)?aug-cc-.+)$"),
+        re.compile(r"^(?P<label>.+?)-(?P<basis>cc-.+)$"),
+    ]
+    for pat in basis_patterns:
+        m = pat.match(stem)
+        if m:
+            return m.group("label"), m.group("basis")
+
     if "-" in stem:
         label, basis = stem.rsplit("-", 1)
         return label, basis
@@ -140,7 +150,12 @@ def parse_run(calc: Calculation) -> None:
     inferred_from: dict[str, str] = {}
     lines = _read_lines(out_path)
 
-    _label, basis_guess = split_label_basis_from_outname(out_path.name)
+    label, basis_guess = split_label_basis_from_outname(out_path.name)
+    if label:
+        calc.meta["label"] = label
+        calc.meta["molecule_key"] = label
+        calc.meta["molecule"] = label
+        inferred_from.setdefault("molecule", "filename")
     if basis_guess:
         calc.meta["basis_guess"] = basis_guess
     basis = _infer_basis_from_content(lines)
@@ -184,6 +199,3 @@ def parse_run(calc: Calculation) -> None:
                 calc.data["beta"] = beta
         except Exception:
             pass
-
-    if calc.molecule is not None:
-        calc.meta["molecule_id"] = compute_molecule_id(calc.molecule)

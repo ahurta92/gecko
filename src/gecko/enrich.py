@@ -4,7 +4,6 @@ from pathlib import Path
 
 from gecko.core.model import Calculation
 from gecko.ids import calc_id, geom_id, mol_id
-from gecko.molecule_id import compute_molecule_id
 from gecko.molecule_resolver import resolve_molecule
 from gecko.mol.resolver import mol_label_from_calc
 
@@ -33,7 +32,7 @@ def enrich(
 
     if calc.molecule is not None:
         calc.meta["geom_id"] = geom_id(calc.molecule)
-        calc.meta.setdefault("molecule_id", compute_molecule_id(calc.molecule))
+        calc.meta["molecule_id"] = calc.meta.get("geom_id")
         calc.meta.setdefault("mol_source", "embedded")
         calc.meta.setdefault("molecule_source", "out")
     else:

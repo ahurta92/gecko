@@ -88,4 +88,9 @@ def load_calc(
     elif calc.molecule is None:
         calc.meta.setdefault("mol_source", "missing")
 
+    if calc.molecule is not None and calc.meta.get("molecule_id") is None:
+        from gecko.ids import geom_id
+
+        calc.meta["molecule_id"] = geom_id(calc.molecule)
+
     return calc

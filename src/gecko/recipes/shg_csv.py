@@ -89,7 +89,7 @@ def build_beta_table(
                 def _format_geometry(row):
                     symbols = row.get("symbols")
                     geometry = row.get("geometry_angstrom")
-                    if pd.isna(symbols) or pd.isna(geometry):
+                    if symbols is None or geometry is None:
                         return None
                     return json.dumps(
                         {"symbols": symbols, "geometry": geometry},
