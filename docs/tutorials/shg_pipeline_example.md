@@ -65,6 +65,12 @@ If you are using the migration app, it reads that path by default. From the repo
 python migration/viz/application.py
 ```
 
+To use a custom location, pass the new CLI argument:
+
+```
+python migration/viz/application.py --shg-csv /path/to/shg_ijk.csv
+```
+
 The app expects these columns:
 - `molecule` (formula) and `Beta`
 - `basis`, `omega`, `ijk`
