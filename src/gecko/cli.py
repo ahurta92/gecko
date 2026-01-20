@@ -3,23 +3,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from gecko.tables.shg import build_shg_ijk
-
-
-def _discover_calc_paths(db_dir: Path) -> list[Path]:
-    db_dir = db_dir.expanduser().resolve()
-    paths: set[Path] = set()
-
-    for out_path in db_dir.rglob("*.out"):
-        paths.add(out_path)
-
-    for json_path in db_dir.rglob("output.json"):
-        paths.add(json_path.parent)
-
-    for json_path in db_dir.rglob("*.calc_info.json"):
-        paths.add(json_path.parent)
-
-    return sorted(paths, key=lambda p: str(p))
+from gecko.core.iterators import iter_calc_dirs
+from gecko.recipes.shg_csv import build_beta_table
 
 
 def _build_shg_command(args: argparse.Namespace) -> int:
@@ -27,11 +12,14 @@ def _build_shg_command(args: argparse.Namespace) -> int:
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    calc_paths = _discover_calc_paths(db_dir)
-    shg_df = build_shg_ijk(
-        calc_paths,
-        start_at=args.start_at,
-        tol=args.tol,
+    calc_dirs = list(iter_calc_dirs(db_dir))
+    shg_df = build_beta_table(
+        calc_dirs,
+        shg_only=True,
+        add_shg_omega=True,
+        shg_start_at=args.start_at,
+        shg_tol=args.tol,
+        app_compat=True,
         verbose=args.verbose,
         fail_fast=args.fail_fast,
     )

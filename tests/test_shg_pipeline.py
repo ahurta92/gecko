@@ -2,82 +2,51 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pandas as pd
-
 import gecko
-from gecko.tables.shg import assign_shg_omega_index, build_shg_ijk, filter_shg_rows
+from gecko.core import iterators
+from gecko.recipes.shg_csv import build_beta_table
 
 
-def test_assign_shg_omega_index_per_molecule():
-    df = pd.DataFrame(
-        [
-            {"geom_id": "g1", "mol_id": "H2O", "root": "r1", "omegaB": 0.0, "omegaC": 0.0},
-            {"geom_id": "g1", "mol_id": "H2O", "root": "r1", "omegaB": 0.1, "omegaC": 0.1},
-            {"geom_id": "g2", "mol_id": "H2O2", "root": "r2", "omegaB": 0.0, "omegaC": 0.0},
-            {"geom_id": None, "mol_id": "CO2", "root": "r3", "omegaB": 0.2, "omegaC": 0.2},
-            {"geom_id": None, "mol_id": "CO2", "root": "r3", "omegaB": 0.4, "omegaC": 0.4},
-        ]
+def test_build_beta_table_shg_omega_mapping():
+    root = Path("tests/fixtures/calc_nlo_beta/NLO")
+    df = build_beta_table(
+        root,
+        shg_only=True,
+        add_shg_omega=True,
+        shg_start_at=0,
+        shg_tol=1e-12,
+        verbose=False,
     )
 
-    out = assign_shg_omega_index(df, start_at=0)
+    assert not df.empty
+    assert (df["omegaB"] - df["omegaC"]).abs().max() <= 1e-12
 
-    g1 = out[out["geom_id"] == "g1"].sort_values("omegaB")
-    assert g1["omega"].tolist() == [0, 1]
-
-    g2 = out[out["geom_id"] == "g2"]
-    assert g2["omega"].tolist() == [0]
-
-    co2 = out[out["mol_id"] == "CO2"].sort_values("omegaB")
-    assert co2["omega"].tolist() == [0, 1]
+    for mol_id, group in df.groupby("mol_id"):
+        if mol_id is None:
+            continue
+        assert group["omega"].min() == 0
 
 
-def test_filter_shg_rows_tolerance():
-    df = pd.DataFrame(
-        [
-            {"omegaB": 0.0, "omegaC": 0.0},
-            {"omegaB": 0.1, "omegaC": 0.1 + 1e-13},
-            {"omegaB": 0.2, "omegaC": 0.2001},
-        ]
-    )
-    out = filter_shg_rows(df, tol=1e-12)
-    assert len(out) == 2
+def test_build_beta_table_uses_iterators(monkeypatch):
+    root = Path("tests/fixtures/calc_nlo_beta/NLO")
+    called = {"count": 0}
+
+    original = iterators.iter_calc_dirs
+
+    def wrapped(path):
+        called["count"] += 1
+        return original(path)
+
+    monkeypatch.setattr(iterators, "iter_calc_dirs", wrapped)
+
+    df = build_beta_table(root, verbose=False)
+    assert called["count"] >= 1
+    assert not df.empty
 
 
-def test_build_shg_ijk_mixed_code_fixture():
-    dalton_path = Path(
-        "tests/fixtures/calc_nlo_beta/NLO/dalton/hf/n2/dipole/quad_n2-aug-cc-pVDZ.out"
-    )
-    madness_path = Path("tests/fixtures/calc_nlo_beta/NLO/madness/n2/output.json")
+def test_dalton_multi_out_counts():
+    root = Path("tests/fixtures/calc_nlo_beta/NLO/dalton/hf/n2/dipole")
+    out_files = list(root.glob("*.out"))
+    calcs = gecko.load_calcs(root)
 
-    calc_dalton = gecko.load_calc(dalton_path)
-    calc_madness = gecko.load_calc(madness_path)
-    assert calc_dalton.molecule is not None
-    assert calc_madness.molecule is not None
-    assert calc_dalton.molecule.get_hash() == calc_madness.molecule.get_hash()
-
-    shg_df = build_shg_ijk([dalton_path, madness_path], start_at=0, tol=1e-12)
-    assert set(shg_df["code"].unique()) == {"dalton", "madness"}
-
-    madness_basis = shg_df[shg_df["code"] == "madness"]["basis"].unique().tolist()
-    assert madness_basis == ["MRA"]
-
-    dalton_basis = shg_df[shg_df["code"] == "dalton"]["basis"].unique().tolist()
-    assert all(b != "MRA" for b in dalton_basis)
-
-
-def test_shg_omega_index_notebook_parity():
-    df = pd.DataFrame(
-        [
-            {"mol_id": "H2O", "root": "r1", "omegaB": 0.0, "omegaC": 0.0},
-            {"mol_id": "H2O", "root": "r1", "omegaB": 0.0, "omegaC": 0.0},
-            {"mol_id": "H2O", "root": "r1", "omegaB": 0.2, "omegaC": 0.2},
-            {"mol_id": "CO2", "root": "r2", "omegaB": 0.1, "omegaC": 0.1},
-        ]
-    )
-    out = assign_shg_omega_index(df, start_at=0)
-
-    h2o = out[out["mol_id"] == "H2O"].sort_values("omegaB")
-    assert h2o["omega"].tolist() == [0, 0, 1]
-
-    co2 = out[out["mol_id"] == "CO2"]
-    assert co2["omega"].tolist() == [0]
+    assert len(calcs) == len(out_files)

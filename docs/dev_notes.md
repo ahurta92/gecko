@@ -31,3 +31,23 @@ This means:
 For MADNESS calculations, `calc.meta["basis"]` is currently forced to "MRA".
 This is a temporary label until we standardize MRA accuracy metadata (e.g.,
 orbital residual + density thresholds).
+
+## SHG pipeline findings (2026-01-20)
+
+Findings:
+- New SHG logic was introduced under `gecko.tables.shg` (now deprecated).
+- A CLI path routed SHG generation through the tables module.
+- Tutorial docs referenced the tables pipeline.
+
+Introduced modules/files (now deprecated or redirected):
+- src/gecko/tables/shg.py
+- src/gecko/tables/__init__.py (exports)
+- src/gecko/cli.py (SHG command path)
+- docs/dev/shg_pipeline.md
+- docs/tutorials/shg_pipeline.md
+
+Resolution:
+- SHG CSV generation is routed exclusively through `gecko.recipes.shg_csv.build_beta_table`.
+- Calculation discovery uses `gecko.core.iterators.iter_calc_dirs`.
+- SHG omega indexing starts at 0 with deterministic sorted frequency mapping.
+- No molecule labels are used in SHG outputs (use `geom_id` + `mol_id` instead).
