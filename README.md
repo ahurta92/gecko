@@ -2,6 +2,28 @@
 
 gecko is a modular Python toolkit for loading, comparing, and visualizing quantum-chemical response data across electronic structure codes.
 
+## Installation
+
+Gecko is a pure-Python project and can be installed directly from source.
+All dependencies (including a temporary fork of QCElemental) are installed automatically.
+
+### Prerequisites
+- Python ≥ 3.12
+- Git
+
+---
+
+
+### Recommended: using `uv` (fastest)
+
+```bash
+git clone https://github.com/ahurta92/gecko.git
+cd gecko
+
+uv venv
+uv pip install -e .
+
+
 ## `gecko` src
 
 ```graphsql
