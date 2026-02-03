@@ -1,6 +1,8 @@
 import copy
 import json
+import numpy as np
 from pathlib import Path
+import qcelemental as qcel
 
 
 class geometry_parameters:
@@ -77,13 +79,14 @@ class MADMolecule:
         else:
             self = copy.deepcopy(orig)
             self.parameters = copy.deepcopy(orig.parameters)
+    start_keywords = ["geometry","molecule"]
 
     def from_string(self, mol_file_string):
         for line in mol_file_string.splitlines():
             if line.startswith("end"):
                 break
             if line and not line.startswith("#"):
-                if line.startswith("geometry"):
+                if any(line.startswith(keyword) for keyword in self.start_keywords):
                     continue
                 split = line.split()
                 if split[0] in self.parameters.__dict__.keys():
@@ -105,7 +108,7 @@ class MADMolecule:
                 if line.startswith("end"):
                     break
                 if line and not line.startswith("#"):
-                    if line.startswith("geometry"):
+                    if any(line.startswith(keyword) for keyword in self.start_keywords):
                         continue
                     split = line.split()
                     if split[0] in self.parameters.__dict__.keys():
@@ -121,7 +124,7 @@ class MADMolecule:
 
     def to_molfile(self, molfile: Path):
         with open(molfile, "w") as f:
-            f.write("geometry\n")
+            f.write("molecule\n")
             # write parameters
             if self.parameters is not None:
                 for key, value in self.parameters.__dict__.items():
@@ -149,3 +152,22 @@ class MADMolecule:
 
 def dict_to_object(obj_class, data):
     return obj_class(**data)
+
+def to_qcel_molecule(mad_mol:MADMolecule,inputs:dict)->qcel.models.Molecule:
+    
+    geom=mad_mol.geometry
+    units=mad_mol.parameters.units
+    if units.lower() in ['angstrom']:
+        geom=qcel.constants.conversion_factor("angstrom","bohr")*np.array(geom)
+    print(geom)
+
+    mol_dict={
+        "geometry": geom,
+        "symbols": mad_mol.symbols,
+        "fix_orientation": mad_mol.parameters.no_orient,
+        "molecular_charge":0,
+        "molecular_multiplicity":1,
+    }
+    mol_dict.update(inputs)
+    return qcel.models.Molecule(**mol_dict)
+
