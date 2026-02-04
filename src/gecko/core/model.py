@@ -14,12 +14,12 @@ class Calculation:
 
     Migration-first design:
     - 'data' can hold raw legacy parser outputs (dicts, etc.)
-    - 'artifacts' lists discovered files
+    - 'artifacts' lists discovered files (and may include structured groupings)
     - 'meta' is freeform convenience metadata
     """
     code: str                  # "madness" or "dalton"
     root: Path
-    artifacts: dict[str, Path] = field(default_factory=dict)
+    artifacts: dict[str, Any] = field(default_factory=dict)
     data: dict[str, Any] = field(default_factory=dict)
     meta: dict[str, Any] = field(default_factory=dict)
     molecule: Optional[qcel.models.Molecule] = None

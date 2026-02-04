@@ -11,11 +11,11 @@ from gecko.core.model import Calculation
 def geom_id_from_molecule(mol: qcel.models.Molecule | None) -> Optional[str]:
     if mol is None:
         return None
-    return str(mol.get_hash())
+    return str(mol.name)
 
 
 def geom_id(molecule: qcel.models.Molecule) -> str:
-    return str(molecule.get_hash())
+    return str(molecule.name)
 
 
 def calc_id(calc: Calculation) -> str:
@@ -28,15 +28,10 @@ def calc_id(calc: Calculation) -> str:
 def mol_id_from_molecule(mol: qcel.models.Molecule | None) -> Optional[str]:
     if mol is None:
         return None
-    formula = getattr(mol, "formula", None)
+    formula = str(mol.get_molecular_formula())
     if formula is not None:
-        return str(formula)
-    if hasattr(mol, "get_molecular_formula"):
-        return str(mol.get_molecular_formula())
-    try:
-        return str(qcel.molutil.molecular_formula(mol.symbols))
-    except Exception:
-        return None
+        return formula 
+    return None
 
 
 def mol_id(calc: Calculation) -> Optional[str]:

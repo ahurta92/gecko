@@ -31,6 +31,12 @@ MOL_BLOCK_HDR_RE = re.compile(r"^\s*Content of the \.mol file\s*$", re.IGNORECAS
 def _read_lines(path: Path) -> list[str]:
     return path.read_text(encoding="utf-8", errors="ignore").splitlines()
 
+def read_dalton_mol(path: Path) -> qcel.models.Molecule:
+    """Read a Dalton-format `.mol` file into a qcelemental Molecule."""
+    mol_path = Path(path).expanduser().resolve()
+    lines = _read_lines(mol_path)
+    return parse_molfile_geometry(lines)
+
 
 def parse_last_molecular_geometry(
     lines: Sequence[str],

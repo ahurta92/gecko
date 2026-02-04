@@ -1,6 +1,7 @@
 # src/gecko/plugins/dalton/loader.py
 from __future__ import annotations
 from pathlib import Path
+from typing import Any
 
 from gecko.core.model import Calculation
 from gecko.plugins.dalton.detect import can_load
@@ -28,8 +29,27 @@ def load(
     return calc
 
 
-def _discover_artifacts(root: Path, *, output_file: Path | None = None) -> dict[str, Path]:
-    artifacts: dict[str, Path] = {}
+def _discover_artifacts(root: Path, *, output_file: Path | None = None) -> dict[str, Any]:
+    artifacts: dict[str, Any] = {}
+
+    dal_files = sorted(root.glob("*.dal"))
+    mol_files = sorted(root.glob("*.mol"))
+    out_files = sorted(root.glob("*.out"))
+    dalton_upper = root / "DALTON.OUT"
+    if dalton_upper.exists() and dalton_upper not in out_files:
+        out_files.insert(0, dalton_upper)
+
+    artifacts["dalton_dal_files"] = dal_files
+    artifacts["dalton_mol_files"] = mol_files
+    artifacts["dalton_out_files"] = out_files
+
+    pairs: list[dict[str, Path]] = []
+    for dal in dal_files:
+        for mol in mol_files:
+            out_path = root / f"{dal.stem}_{mol.stem}.out"
+            if out_path.exists():
+                pairs.append({"dal": dal, "mol": mol, "out": out_path})
+    artifacts["dalton_pairs"] = pairs
 
     if output_file is not None:
         out_path = Path(output_file).expanduser().resolve()
@@ -41,13 +61,12 @@ def _discover_artifacts(root: Path, *, output_file: Path | None = None) -> dict[
             artifacts["out"] = preferred
             artifacts["dalton_out"] = preferred
         else:
-            out_files = sorted(root.glob("*.out"))
             if out_files:
                 artifacts["out"] = out_files[0]
                 artifacts["dalton_out"] = out_files[0]
 
     if "out" in artifacts:
-        out_path = artifacts["out"]
+        out_path: Path = artifacts["out"]
         quad_candidates = [
             p
             for p in root.glob("*.out")

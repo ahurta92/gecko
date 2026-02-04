@@ -54,14 +54,157 @@ def _maybe_load_molecule_from_calc_dir(calc: Calculation) -> Optional[Any]:
     return None
 
 
+def _maybe_attach_input_output_molecules(calc: Calculation) -> None:
+    """
+    Attach standardized molecules for downstream analysis:
+      - calc.data["input_molecule"]
+      - calc.data["output_molecule"]
+
+    Conventions:
+      - input_molecule: best-effort from input artifacts
+      - output_molecule: best-effort from outputs; falls back to input_molecule
+      - calc.molecule: "current" geometry, prefer output_molecule
+    """
+    import numpy as np
+
+    input_mol = calc.data.get("input_molecule")
+    output_mol = calc.data.get("output_molecule")
+
+    def _canon(symbols, geometry):
+        from gecko.molecule.canonical import canonicalize_atom_order
+
+        symbols_sorted, geometry_sorted = canonicalize_atom_order(
+            list(symbols), np.asarray(geometry, dtype=float).reshape(-1, 3), decimals=10
+        )
+        return symbols_sorted, np.asarray(geometry_sorted, dtype=float).reshape(-1, 3)
+
+    # -------------------------
+    # input_molecule
+    # -------------------------
+    if input_mol is None:
+        if calc.code == "madness":
+            input_json = calc.artifacts.get("input_json")
+            if isinstance(input_json, Path) and input_json.exists():
+                try:
+                    import json
+                    import qcelemental as qcel
+
+                    data = json.loads(input_json.read_text(encoding="utf-8"))
+                    mol = data.get("molecule")
+                    if isinstance(mol, dict):
+                        symbols = mol.get("symbols")
+                        geometry = mol.get("geometry")
+                        if symbols is not None and geometry is not None:
+                            units = mol.get("units") or mol.get("parameters", {}).get("units")
+                            coords = np.asarray(geometry, dtype=float).reshape(-1, 3)
+                            if isinstance(units, str) and units.lower() in ("bohr", "atomic", "au"):
+                                coords = coords * qcel.constants.bohr2angstroms
+                            sym, coords = _canon(symbols, coords)
+                            input_mol = qcel.models.Molecule(symbols=sym, geometry=coords)
+                            calc.meta.setdefault("input_molecule_source", "input.json")
+                            calc.meta.setdefault("input_molecule_path", str(input_json))
+                except Exception as exc:
+                    calc.meta.setdefault("warnings", []).append(
+                        f"Failed to read input molecule from input.json: {input_json} ({type(exc).__name__}: {exc})"
+                    )
+
+            if input_mol is None:
+                from gecko.mol.io import read_mol
+
+                preferred = calc.root / "molecule.mol"
+                candidates: list[Path] = []
+                if preferred.exists():
+                    candidates.append(preferred)
+                candidates.extend(sorted(p for p in calc.root.glob("*.mol") if p != preferred))
+                for p in candidates:
+                    try:
+                        input_mol = read_mol(p)
+                        calc.meta.setdefault("input_molecule_source", "mol")
+                        calc.meta.setdefault("input_molecule_path", str(p))
+                        break
+                    except Exception:
+                        continue
+
+        elif calc.code == "dalton":
+            from gecko.plugins.dalton.parse import read_dalton_mol
+
+            preferred_mol: Path | None = None
+            out_path = calc.artifacts.get("out")
+            pairs = calc.artifacts.get("dalton_pairs")
+
+            if isinstance(out_path, Path) and isinstance(pairs, list):
+                for entry in pairs:
+                    if not isinstance(entry, dict):
+                        continue
+                    if entry.get("out") == out_path and isinstance(entry.get("mol"), Path):
+                        preferred_mol = entry["mol"]
+                        calc.meta.setdefault("input_molecule_source", "dalton_pairs")
+                        calc.meta.setdefault("input_molecule_path", str(preferred_mol))
+                        break
+
+            if preferred_mol is None and isinstance(pairs, list) and pairs:
+                first = pairs[0]
+                if isinstance(first, dict) and isinstance(first.get("mol"), Path):
+                    preferred_mol = first["mol"]
+                    calc.meta.setdefault("input_molecule_source", "dalton_pairs_first")
+                    calc.meta.setdefault("input_molecule_path", str(preferred_mol))
+
+            if preferred_mol is None:
+                mols = calc.artifacts.get("dalton_mol_files")
+                if isinstance(mols, list) and mols:
+                    candidate = mols[0]
+                    if isinstance(candidate, Path):
+                        preferred_mol = candidate
+                        calc.meta.setdefault("input_molecule_source", "dalton_mol_files")
+                        calc.meta.setdefault("input_molecule_path", str(preferred_mol))
+
+            if preferred_mol is not None and preferred_mol.exists():
+                try:
+                    input_mol = read_dalton_mol(preferred_mol)
+                except Exception as exc:
+                    calc.meta.setdefault("warnings", []).append(
+                        f"Failed to read Dalton input molecule: {preferred_mol} ({type(exc).__name__}: {exc})"
+                    )
+
+    # --------------------------
+    # output_molecule
+    # --------------------------
+    if output_mol is None:
+        mol_from_data = calc.data.get("molecule")
+        if mol_from_data is not None:
+            output_mol = mol_from_data
+            calc.meta.setdefault("output_molecule_source", "data.molecule")
+        elif calc.molecule is not None:
+            output_mol = calc.molecule
+            calc.meta.setdefault("output_molecule_source", "calc.molecule")
+
+    if output_mol is None and input_mol is not None:
+        output_mol = input_mol
+        calc.meta.setdefault("output_molecule_source", "input_fallback")
+
+    if input_mol is not None:
+        calc.data["input_molecule"] = input_mol
+    if output_mol is not None:
+        calc.data["output_molecule"] = output_mol
+
+    calc.molecule = output_mol or input_mol or calc.molecule
+
+
 def _finalize_calc(calc: Calculation) -> Calculation:
+    """Finalize a Calculation after loading and parsing.
+    Attach optional artifacts, ensure molecule is set, and populate meta.
+    """
     _maybe_attach_calc_info(calc)
 
     if calc.molecule is None and calc.data.get("molecule") is not None:
         calc.molecule = calc.data.get("molecule")
 
+    _maybe_attach_input_output_molecules(calc)
+
     if calc.molecule is None:
         calc.molecule = _maybe_load_molecule_from_calc_dir(calc)
+
+    _maybe_attach_input_output_molecules(calc)
 
     if calc.molecule is None:
         calc.meta.setdefault("mol_source", "missing")
@@ -90,32 +233,6 @@ def load_calc(
     if not root.exists():
         raise FileNotFoundError(f"Path does not exist: {root}")
 
-    if root.is_file():
-        if root.suffix.lower() == ".out":
-            calc = load_dalton(root.parent, output_file=root, run_id=root.name)
-            return _finalize_calc(calc)
-        if root.suffix.lower() == ".json":
-            artifacts: dict[str, Path] = {}
-            if root.name.endswith(".calc_info.json"):
-                artifacts["calc_info_json"] = root
-            elif root.name.endswith("_mad_output.json"):
-                artifacts["mad_output_json"] = root
-            elif root.name in {"output.json", "outputs.json"}:
-                artifacts["output_json"] = root
-            else:
-                raise ValueError(f"Unrecognized MADNESS JSON file: {root}")
-
-            input_json = root.parent / "input.json"
-            if input_json.exists():
-                artifacts["input_json"] = input_json
-
-            calc = Calculation(code="madness", root=root.parent, artifacts=artifacts, data={}, meta={})
-            from gecko.plugins.madness.parse import parse_run
-
-            parse_run(calc)
-            return _finalize_calc(calc)
-        raise ValueError(f"Expected a directory, got a file: {root}")
-
     if madness_can_load(root):
         calc = load_madness(root)
         return _finalize_calc(calc)
@@ -130,23 +247,23 @@ def load_calc(
     )
 
 
-def load_calcs(
-    path: str | Path,
-) -> list[Calculation]:
-    root = Path(path).expanduser().resolve()
-    if not root.exists():
-        raise FileNotFoundError(f"Path does not exist: {root}")
-
-    if root.is_file():
-        return [load_calc(root)]
-
-    if madness_can_load(root):
-        return [load_calc(root)]
-
-    if dalton_can_load(root):
-        return [load_calc(root)]
-
-    raise ValueError(
-        "Could not detect calculation type (madness/dalton) from directory. "
-        f"Path: {root}"
-    )
+# def load_calcs(
+#     path: str | Path,
+# ) -> list[Calculation]:
+#     root = Path(path).expanduser().resolve()
+#     if not root.exists():
+#         raise FileNotFoundError(f"Path does not exist: {root}")
+#
+#     if root.is_file():
+#         return [load_calc(root)]
+#
+#     if madness_can_load(root):
+#         return [load_calc(root)]
+#
+#     if dalton_can_load(root):
+#         return [load_calc(root)]
+#
+#     raise ValueError(
+#         "Could not detect calculation type (madness/dalton) from directory. "
+#         f"Path: {root}"
+#     )

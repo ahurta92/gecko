@@ -29,7 +29,7 @@ Non-goals (not part of this contract yet):
 
 - `calc.code` is one of: `"madness"`, `"dalton"`
 - `calc.root` is the resolved calculation directory (`Path`)
-- `calc.artifacts` contains the discovered primary input artifacts (best-effort)
+- `calc.artifacts` contains the discovered primary input artifacts (best-effort). It may also include structured groupings.
 - `calc.data` contains parser outputs (best-effort), and may be empty if parsing fails
 - `calc.molecule` is:
   - a `qcelemental.models.Molecule` when geometry can be determined, otherwise `None`
@@ -53,10 +53,22 @@ File loads:
 - `.../02_aug-cc-pVDZ_n2/quad.out` loads as Dalton with `calc.root == parent_dir`
 - `.../00_mra-d06_bh2cl/outputs.json` loads as MADNESS with `calc.root == parent_dir`
 
+## Dalton artifact discovery (multi-step)
+
+For Dalton directories with multiple steps (e.g. optimize + raman), `load_calc(dir)` should discover **all available inputs and outputs**.
+
+Minimum expectations (best-effort; presence depends on what files exist):
+- `calc.artifacts["dalton_dal_files"]`: list of `Path` for `*.dal` in the directory
+- `calc.artifacts["dalton_mol_files"]`: list of `Path` for `*.mol` in the directory
+- `calc.artifacts["dalton_out_files"]`: list of `Path` for `*.out` in the directory (including `DALTON.OUT` if present)
+- `calc.artifacts["dalton_pairs"]`: list of dicts of the form `{"dal": Path, "mol": Path, "out": Path}`
+
+Pairing rule (initial contract):
+- For each `X.dal` and `Y.mol`, if an output exists named `X_Y.out`, then that triple appears in `dalton_pairs`.
+
 ## How to change this contract
 
 If you want to change any of the invariants above:
 1) Update this contract doc.
 2) Update the corresponding tests.
 3) Then refactor implementation freely until tests pass.
-
