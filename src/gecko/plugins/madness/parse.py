@@ -188,6 +188,13 @@ def parse_run(calc: Calculation) -> None:
     calc.data["beta"] = _beta_df_to_tensor(obj.beta_pivot)
     calc.data["alpha"] = _beta_df_to_tensor(obj.alpha_pivot)
 
+    calc.data["raman"] = {"polarization_frequencies": obj.polarization_frequencies,
+                          "vibrational_frequencies": obj.vibrational_frequencies,
+                          "polarizability_derivatives": obj.polarizability_derivatives,
+                          "polarizability_derivatives_by_mode": obj.polarizability_derivatives,
+                            "raman_by_freq": obj.raman_by_freq}
+
+
     # Keep other useful arrays (best-effort; may be None for some runs)
     calc.data["orbital_energies"] = obj.orbital_energies
     calc.data["hessian"] = obj.hessian
@@ -198,6 +205,23 @@ def parse_run(calc: Calculation) -> None:
     calc.data["molecule"] = obj.molecule
     calc.molecule = obj.molecule
     calc.meta["ground_state_energy"] = obj.ground_state_energy
+
+    if obj.raman_by_freq is not None:
+        calc.data["raman"] = {
+            "polarization_frequencies": np.asarray(
+                obj.polarization_frequencies, dtype=float
+            )
+            if obj.polarization_frequencies is not None
+            else np.asarray([], dtype=float),
+            "vibrational_frequencies": np.asarray(
+                obj.vibrational_frequencies, dtype=float
+            )
+            if obj.vibrational_frequencies is not None
+            else np.asarray([], dtype=float),
+            "polarizability_derivatives": obj.polarizability_derivatives,
+            "polarizability_derivatives_by_mode": obj.polarizability_derivatives_normal_modes,
+            "raman_by_freq": obj.raman_by_freq,
+        }
 
     if calc.molecule is None:
         calc.molecule = _load_molecule_from_input(calc.artifacts.get("input_json"))

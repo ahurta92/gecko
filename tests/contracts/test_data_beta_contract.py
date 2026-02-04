@@ -17,7 +17,7 @@ _COMP_RE = re.compile(r"^[xyz]{3}$")
 
 def _format_beta_values(values: np.ndarray, *, threshold: float = 1e-6) -> str:
     cleaned = np.where(np.abs(values) < threshold, 0.0, values)
-    with np.printoptions(precision=6, suppress=True, linewidth=120):
+    with np.printoptions(precision=3, suppress=True, linewidth=120):
         return np.array2string(cleaned)
 
 

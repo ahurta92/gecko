@@ -9,6 +9,7 @@ import qcelemental as qcel
 
 from gecko.core.model import Calculation
 from gecko.molecule.canonical import canonicalize_atom_order
+from gecko.plugins.dalton.legacy.dalton import DaltonParser as LegacyDaltonParser
 
 
 _BETA_LINE_PREFIX = "@ B-freq"
@@ -469,6 +470,76 @@ def _parse_beta_from_quad_lines(lines: list[str]) -> dict[str, Any] | None:
     }
 
 
+def _normalize_raman_rows(
+    raman_by_freq: dict[float, list[dict[str, Any]]]
+) -> dict[float, list[dict[str, Any]]]:
+    for _, rows in raman_by_freq.items():
+        for row in rows:
+            if "dep_ratio" not in row and "depol_ratio" in row:
+                row["dep_ratio"] = row.get("depol_ratio")
+    return raman_by_freq
+
+
+def _parse_raman_from_legacy(lines: list[str]) -> dict[str, Any] | None:
+    legacy = LegacyDaltonParser(lines)
+    raman_by_freq = legacy.parse_raman_tables() or {}
+    vib_rows = legacy.parse_vibrations() or []
+    vib_freqs = [row.get("freq_cm1") for row in vib_rows if "freq_cm1" in row]
+
+    try:
+        legacy.parse_geometry()
+    except Exception:
+        pass
+
+    try:
+        legacy.parse_num_frequencies()
+    except Exception:
+        pass
+
+    polar_cart = None
+    polar_normal = None
+    try:
+        polar_cart = legacy.parse_polar_cartesian_gradients()
+    except Exception:
+        polar_cart = None
+
+    try:
+        polar_normal = legacy.parse_polar_normal_gradients()
+    except Exception:
+        polar_normal = None
+
+    pol_freqs = sorted(raman_by_freq.keys()) if raman_by_freq else []
+    if not pol_freqs:
+        if polar_cart:
+            pol_freqs = sorted(polar_cart.keys())
+        elif polar_normal:
+            pol_freqs = sorted(polar_normal.keys())
+
+    polar_derivatives: list[np.ndarray] = []
+    if polar_cart and pol_freqs:
+        for f in pol_freqs:
+            if f in polar_cart:
+                polar_derivatives.append(polar_cart[f])
+
+    polar_derivatives_by_mode: list[np.ndarray] = []
+    if polar_normal and pol_freqs:
+        for f in pol_freqs:
+            if f in polar_normal:
+                polar_derivatives_by_mode.append(polar_normal[f])
+
+    if not (raman_by_freq and vib_freqs and pol_freqs):
+        return None
+
+    raman_by_freq = _normalize_raman_rows(raman_by_freq)
+    return {
+        "polarization_frequencies": np.asarray(pol_freqs, dtype=float),
+        "vibrational_frequencies": np.asarray(vib_freqs, dtype=float),
+        "polarizability_derivatives": polar_derivatives,
+        "polarizability_derivatives_by_mode": polar_derivatives_by_mode,
+        "raman_by_freq": raman_by_freq,
+    }
+
+
 def _sorted_out_files(root: Path, *, primary: Path | None = None) -> list[Path]:
     out_files = sorted(root.glob("*.out"))
     dalton_upper = root / "DALTON.OUT"
@@ -498,6 +569,7 @@ def _parse_one_out(path: Path) -> dict[str, Any]:
         "molecule_source": None,
         "alpha": None,
         "beta": None,
+        "raman": None,
         "warnings": [],
     }
 
@@ -538,6 +610,13 @@ def _parse_one_out(path: Path) -> dict[str, Any]:
     except Exception:
         pass
 
+    try:
+        raman = _parse_raman_from_legacy(lines)
+        if raman is not None:
+            out["raman"] = raman
+    except Exception:
+        pass
+
     return out
 
 
@@ -562,6 +641,7 @@ def parse_run(calc: Calculation) -> None:
     outputs: dict[str, Any] = {}
     alpha_by_out: dict[str, Any] = {}
     beta_by_out: dict[str, Any] = {}
+    raman_by_out: dict[str, Any] = {}
     energy_by_out: dict[str, float] = {}
     basis_by_out: dict[str, str] = {}
     warnings: list[str] = []
@@ -576,6 +656,8 @@ def parse_run(calc: Calculation) -> None:
             alpha_by_out[out_path.name] = parsed["alpha"]
         if parsed.get("beta") is not None:
             beta_by_out[out_path.name] = parsed["beta"]
+        if parsed.get("raman") is not None:
+            raman_by_out[out_path.name] = parsed["raman"]
         if parsed.get("ground_state_energy") is not None:
             energy_by_out[out_path.name] = float(parsed["ground_state_energy"])
         if parsed.get("basis") is not None:
@@ -633,6 +715,15 @@ def parse_run(calc: Calculation) -> None:
             calc.data["beta_by_out"] = beta_by_out
         else:
             calc.data["beta_by_out"] = beta_by_out
+
+    if raman_by_out:
+        if len(raman_by_out) == 1:
+            calc.data["raman"] = next(iter(raman_by_out.values()))
+        elif primary_name in raman_by_out:
+            calc.data["raman"] = raman_by_out[primary_name]
+            calc.data["raman_by_out"] = raman_by_out
+        else:
+            calc.data["raman_by_out"] = raman_by_out
 
     if basis_by_out and len(set(basis_by_out.values())) > 1:
         calc.meta["basis_by_out"] = basis_by_out
