@@ -15,6 +15,11 @@ logger=logging.getLogger(__name__)
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "load_calc"
 _COMP_RE = re.compile(r"^[xyz]{3}$")
 
+def _format_beta_values(values: np.ndarray, *, threshold: float = 1e-6) -> str:
+    cleaned = np.where(np.abs(values) < threshold, 0.0, values)
+    with np.printoptions(precision=6, suppress=True, linewidth=120):
+        return np.array2string(cleaned)
+
 
 def _assert_beta_schema(beta: dict) -> None:
     assert isinstance(beta, dict)
@@ -38,6 +43,7 @@ def _assert_beta_schema(beta: dict) -> None:
         assert _COMP_RE.match(comp) is not None
         
 
+threshold = 1e-2
 
 def test_beta_contract_madness() -> None:
     calc = load_calc(FIXTURES / "01_mra-d04_n2")
@@ -46,8 +52,14 @@ def test_beta_contract_madness() -> None:
     assert beta, "Expected beta data to be present for this fixture"
     _assert_beta_schema(beta)
 
-    logger.info(f"Test beta data for madness fixture: omega shape {beta['omega'].shape}, values shape {beta['values'].shape}, components {beta['components']}")
-    logger.info(f"Beta omega:\n{beta['omega']}\nBeta components:\n{beta['components']}\nBeta values:\n{beta['values']}")
+    logger.info(
+        f"Test beta data for madness fixture: omega shape {beta['omega'].shape}, "
+        f"values shape {beta['values'].shape}, components {beta['components']}"
+    )
+    logger.info(
+        f"Beta omega:\n{beta['omega']}\nBeta components:\n{beta['components']}"
+        f"\nBeta values (|v|<{threshold} -> 0):\n{_format_beta_values(beta['values'])}"
+    )
 
 
 def test_beta_contract_dalton() -> None:
@@ -56,7 +68,13 @@ def test_beta_contract_dalton() -> None:
     beta = calc.data.get("beta")
     assert beta, "Expected beta data to be present for this fixture"
     _assert_beta_schema(beta)
-    logger.info(f"Test beta data for madness fixture: omega shape {beta['omega'].shape}, values shape {beta['values'].shape}, components {beta['components']}")
-    logger.info(f"Beta omega:\n{beta['omega']}\nBeta components:\n{beta['components']}\nBeta values:\n{beta['values']}")
+    logger.info(
+        f"Test beta data for dalton fixture: omega shape {beta['omega'].shape}, "
+        f"values shape {beta['values'].shape}, components {beta['components']}"
+    )
+    logger.info(
+        f"Beta omega:\n{beta['omega']}\nBeta components:\n{beta['components']}"
+        f"\nBeta values (|v|<{threshold} -> 0):\n{_format_beta_values(beta['values'])}"
+    )
 
 

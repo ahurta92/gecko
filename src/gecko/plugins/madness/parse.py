@@ -44,7 +44,9 @@ def _beta_df_to_tensor(beta_df) -> dict[str, Any]:
 
     omega = np.asarray(beta_df.index.to_list(), dtype=float)  # (n_freq, 3)
     components = [str(c) for c in beta_df.columns.to_list()]
-    values = beta_df.to_numpy()  # (n_freq, n_comp)
+    values = beta_df.to_numpy(dtype=float)  # (n_freq, n_comp)
+    # zero out tiny values for cleaner output
+    #values[np.abs(values) < 1e-3] = 0.0
 
     return {"omega": omega, "components": components, "values": values, "shape": ("freq", "component")}
 
