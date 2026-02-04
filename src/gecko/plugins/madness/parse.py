@@ -1,17 +1,22 @@
 from __future__ import annotations
 
+
 from pathlib import Path
 from typing import Any
+import logging
+
 
 import numpy as np
 
 from gecko.core.model import Calculation
 from gecko.molecule.canonical import canonicalize_atom_order
 
+logger = logging.getLogger(__name__)
+
 
 def _beta_df_to_tensor(beta_df) -> dict[str, Any]:
     """
-    Convert MADNESS beta_pivot (pandas DataFrame) into a tensor-first representation.
+    Convert MADNESS df_pivot (pandas DataFrame) into a tensor-first representation.
 
     Expects:
       - beta_df.index = MultiIndex [omegaA, omegaB, omegaC]
@@ -20,7 +25,7 @@ def _beta_df_to_tensor(beta_df) -> dict[str, Any]:
 
     Returns:
       {
-        "omega": np.ndarray shape (n_freq, 3) [omegaA, omegaB, omegaC],
+        "omega": np.ndarray shape (n_freq, num_compents) -> example for beta [omegaA, omegaB, omegaC],
         "components": list[str],
         "values": np.ndarray shape (n_freq, n_comp),
         "shape": ("freq", "component"),
@@ -43,6 +48,93 @@ def _beta_df_to_tensor(beta_df) -> dict[str, Any]:
 
     return {"omega": omega, "components": components, "values": values, "shape": ("freq", "component")}
 
+def _format_mra_threshold(prefix: str, value: float) -> str:
+    try:
+        import math
+
+        if value <= 0:
+            return "mra"
+        exp = int(round(-math.log10(float(value))))
+        if exp < 0:
+            return "mra"
+        return f"mra-{prefix}{exp:02d}"
+    except Exception:
+        return "mra"
+
+
+def _infer_mra_basis_from_obj(obj: Any) -> str | None:
+    if not isinstance(obj, (dict, list)):
+        return None
+
+    # Depth-first search for known keys.
+    if isinstance(obj, dict):
+        # Direct dconv
+        for k in ("dconv", "converged_for_dconv"):
+            v = obj.get(k)
+            if isinstance(v, (int, float)) and float(v) > 0:
+                return _format_mra_threshold("d", float(v))
+
+        # Protocol (list)
+        v = obj.get("protocol")
+        if isinstance(v, list) and v:
+            last = v[-1]
+            if isinstance(last, (int, float)) and float(last) > 0:
+                return _format_mra_threshold("p", float(last))
+
+        # Some calc-info payloads store convergence thresholds under different keys.
+        for k in ("converged_for_thresh", "thresh"):
+            v = obj.get(k)
+            if isinstance(v, (int, float)) and float(v) > 0:
+                return _format_mra_threshold("p", float(v))
+
+        for v in obj.values():
+            out = _infer_mra_basis_from_obj(v)
+            if out is not None:
+                return out
+        return None
+
+    # list
+    for it in obj:
+        out = _infer_mra_basis_from_obj(it)
+        if out is not None:
+            return out
+    return None
+
+
+def _infer_mra_basis_from_input_in_text(text: str) -> str | None:
+    import re
+
+    # dconv 1e-6 (or dconv=1e-6)
+    m = re.search(r"(?im)^\s*dconv\s*(?:=)?\s*([0-9.+-eE]+)\s*$", text)
+    if m:
+        try:
+            return _format_mra_threshold("d", float(m.group(1)))
+        except Exception:
+            pass
+
+    # protocol [0.0001,1e-06,1e-7]
+    m = re.search(r"(?im)^\s*protocol\s*(?:=)?\s*\[(.*?)\]\s*$", text)
+    if m:
+        raw = m.group(1)
+        nums = re.findall(r"[0-9.]+(?:[eE][+-]?[0-9]+)?", raw)
+        if nums:
+            try:
+                return _format_mra_threshold("p", float(nums[-1]))
+            except Exception:
+                pass
+
+    # protocol 1e-4 1e-6 1e-8 (space-separated)
+    m = re.search(r"(?im)^\s*protocol\s+(.+?)\s*$", text)
+    if m:
+        nums = re.findall(r"[0-9.]+(?:[eE][+-]?[0-9]+)?", m.group(1))
+        if nums:
+            try:
+                return _format_mra_threshold("p", float(nums[-1]))
+            except Exception:
+                pass
+
+    return None
+
 
 def parse_run(calc: Calculation) -> None:
     """
@@ -60,7 +152,6 @@ def parse_run(calc: Calculation) -> None:
         return
 
     calc.meta["style"] = style
-    calc.meta["basis"] = "MRA"
 
     from gecko.plugins.madness.legacy.madness_data import madqc_parser
 
@@ -69,8 +160,31 @@ def parse_run(calc: Calculation) -> None:
     # Keep raw json as source of truth during migration
     calc.data["raw_json"] = _read_json(json_path)
 
+    # Basis label (MRA) inference.
+    # Priority: paired input .in (MADQC) -> input.json -> parsed payload.
+    basis = None
+    input_in = calc.artifacts.get("input_in")
+    if isinstance(input_in, Path) and input_in.exists():
+        try:
+            basis = _infer_mra_basis_from_input_in_text(
+                input_in.read_text(encoding="utf-8", errors="ignore")
+            )
+        except Exception:
+            basis = None
+
+    input_json = calc.artifacts.get("input_json")
+    if isinstance(input_json, Path) and input_json.exists():
+        try:
+            basis = _infer_mra_basis_from_obj(_read_json(input_json))
+        except Exception:
+            basis = None
+    if basis is None:
+        basis = _infer_mra_basis_from_obj(calc.data.get("raw_json"))
+    calc.basis = basis or "mra"
+
     # Tensor-first hyperpolarizability
     calc.data["beta"] = _beta_df_to_tensor(obj.beta_pivot)
+    calc.data["alpha"] = _beta_df_to_tensor(obj.alpha_pivot)
 
     # Keep other useful arrays (best-effort; may be None for some runs)
     calc.data["orbital_energies"] = obj.orbital_energies

@@ -5,7 +5,7 @@ This contract defines how Gecko represents **starting** and **final** geometries
 Motivation:
 - Basis-set comparisons should be performed between calculations that share the **same input geometry**.
 - Some calculations are single-step (no geometry change): then `output_molecule == input_molecule`.
-- Some calculations are multi-step (e.g. optimize → raman): the final property should be associated with the **final geometry**.
+- Some calculations are multi-step (e.g. optimize → raman): the final property should be associated with the **initial geometry**.
 
 ## Scope
 
@@ -42,10 +42,15 @@ Starting geometry consistency (basis comparisons):
 Single-step behavior:
 - In the same fixtures above, `output_molecule` must exist and match `input_molecule`.
 
+Multi-step behavior (optimize → property):
+- `tests/fixtures/load_calc/05_dalton_raman_h2o`:
+  - `input_molecule` must exist and come from the starting `.mol`
+  - `output_molecule` must exist and represent the optimized geometry (it may differ from `input_molecule`)
+  - `calc.molecule` should match `output_molecule` (final geometry for downstream analysis)
+
 ## How to change this contract
 
 If you want to add support for intermediate steps (optimize geometry distinct from raman geometry, etc.):
 1) Update this document.
 2) Update tests.
 3) Update loader/parser logic accordingly.
-

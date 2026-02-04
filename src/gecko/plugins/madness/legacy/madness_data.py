@@ -222,8 +222,6 @@ class madqc_parser:
                 alpha["omega"] = alpha.freqB.astype(float)
                 alpha = alpha[["omega", "ij", "value"]]
                 alpha_pivot = alpha.pivot(index="omega", columns="ij", values="value")
-                if all(c in alpha_pivot.columns for c in ("xx", "yy", "zz")):
-                    alpha_pivot["mean_alpha"] = (alpha_pivot["xx"] + alpha_pivot["yy"] + alpha_pivot["zz"]) / 3.0
                 self.alpha_pivot = alpha_pivot
         except Exception as e:
             self.warnings.append(f"Failed to parse alpha: {type(e).__name__}: {e}")

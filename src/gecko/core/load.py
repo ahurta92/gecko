@@ -125,6 +125,41 @@ def _maybe_attach_input_output_molecules(calc: Calculation) -> None:
                     except Exception:
                         continue
 
+            # Fallback: if the calc payload includes an embedded molecule block (common in MADQC calc_info),
+            # treat that as the input molecule when no dedicated input artifact exists.
+            if input_mol is None:
+                raw = calc.data.get("raw_json")
+                if isinstance(raw, dict):
+                    try:
+                        import qcelemental as qcel
+
+                        def _find_first_molecule_dict(obj):
+                            if isinstance(obj, dict):
+                                if isinstance(obj.get("symbols"), list) and obj.get("geometry") is not None:
+                                    return obj
+                                for v in obj.values():
+                                    r = _find_first_molecule_dict(v)
+                                    if r is not None:
+                                        return r
+                            elif isinstance(obj, list):
+                                for it in obj:
+                                    r = _find_first_molecule_dict(it)
+                                    if r is not None:
+                                        return r
+                            return None
+
+                        m = _find_first_molecule_dict(raw.get("tasks") or raw)
+                        if isinstance(m, dict):
+                            units = m.get("units") or m.get("parameters", {}).get("units")
+                            coords = np.asarray(m.get("geometry"), dtype=float).reshape(-1, 3)
+                            if isinstance(units, str) and units.lower() in ("bohr", "atomic", "au"):
+                                coords = coords * qcel.constants.bohr2angstroms
+                            sym, coords = _canon(m.get("symbols"), coords)
+                            input_mol = qcel.models.Molecule(symbols=sym, geometry=coords)
+                            calc.meta.setdefault("input_molecule_source", "raw_json")
+                    except Exception:
+                        pass
+
         elif calc.code == "dalton":
             from gecko.plugins.dalton.parse import read_dalton_mol
 
@@ -246,24 +281,3 @@ def load_calc(
         f"Path: {root}"
     )
 
-
-# def load_calcs(
-#     path: str | Path,
-# ) -> list[Calculation]:
-#     root = Path(path).expanduser().resolve()
-#     if not root.exists():
-#         raise FileNotFoundError(f"Path does not exist: {root}")
-#
-#     if root.is_file():
-#         return [load_calc(root)]
-#
-#     if madness_can_load(root):
-#         return [load_calc(root)]
-#
-#     if dalton_can_load(root):
-#         return [load_calc(root)]
-#
-#     raise ValueError(
-#         "Could not detect calculation type (madness/dalton) from directory. "
-#         f"Path: {root}"
-#     )

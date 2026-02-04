@@ -23,6 +23,7 @@ class Calculation:
     data: dict[str, Any] = field(default_factory=dict)
     meta: dict[str, Any] = field(default_factory=dict)
     molecule: Optional[qcel.models.Molecule] = None
+    basis: Optional[str] = None
 
     def __repr__(self) -> str:
         keys = ", ".join(sorted(self.data.keys())) if self.data else "-"

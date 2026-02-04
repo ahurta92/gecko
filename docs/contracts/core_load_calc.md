@@ -66,6 +66,24 @@ Minimum expectations (best-effort; presence depends on what files exist):
 Pairing rule (initial contract):
 - For each `X.dal` and `Y.mol`, if an output exists named `X_Y.out`, then that triple appears in `dalton_pairs`.
 
+## MADNESS artifact discovery (paired inputs)
+
+For MADNESS directories, `load_calc(dir)` should only accept directories that include the corresponding input artifact:
+
+- MADQC style (`*.calc_info.json`):
+  - For a file named `{stem}.calc_info.json`, there must exist an input `{stem}.in`
+  - If present, the raw text output `{stem}.out` should be discovered as well
+  - The chosen artifacts are exposed as:
+    - `calc.artifacts["calc_info_json"]` (Path)
+    - `calc.artifacts["input_in"]` (Path)
+    - `calc.artifacts["raw_out"]` (Path, optional)
+
+- Legacy style (`output.json` / `outputs.json`):
+  - Requires `input.json` in the same directory
+  - Artifacts include:
+    - `calc.artifacts["output_json"]`
+    - `calc.artifacts["input_json"]`
+
 ## How to change this contract
 
 If you want to change any of the invariants above:

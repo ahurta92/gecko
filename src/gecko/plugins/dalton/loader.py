@@ -6,6 +6,7 @@ from typing import Any
 from gecko.core.model import Calculation
 from gecko.plugins.dalton.detect import can_load
 from gecko.plugins.dalton.parse import parse_run
+from gecko.plugins.dalton.parse import infer_basis_from_dalton_mol
 
 def load(
     path: Path,
@@ -26,6 +27,7 @@ def load(
         calc.meta["run_id"] = run_id
         calc.meta["calc_key"] = f"{root}:{run_id}"
     parse_run(calc)
+    _maybe_attach_basis_from_pairs(calc)
     return calc
 
 
@@ -77,3 +79,36 @@ def _discover_artifacts(root: Path, *, output_file: Path | None = None) -> dict[
             artifacts["dalton_quad_out"] = quad_candidates[0]
 
     return artifacts
+
+
+def _maybe_attach_basis_from_pairs(calc: Calculation) -> None:
+    """
+    Prefer Dalton basis inference from paired .mol files over filename/content heuristics.
+    """
+    pairs = calc.artifacts.get("dalton_pairs")
+    if not isinstance(pairs, list) or not pairs:
+        return
+
+    out_path = calc.artifacts.get("out")
+
+    preferred_mol: Path | None = None
+    if isinstance(out_path, Path):
+        for entry in pairs:
+            if not isinstance(entry, dict):
+                continue
+            if entry.get("out") == out_path and isinstance(entry.get("mol"), Path):
+                preferred_mol = entry["mol"]
+                break
+
+    if preferred_mol is None:
+        first = pairs[0]
+        if isinstance(first, dict) and isinstance(first.get("mol"), Path):
+            preferred_mol = first["mol"]
+
+    if preferred_mol is None or not preferred_mol.exists():
+        return
+
+    basis = infer_basis_from_dalton_mol(preferred_mol)
+    if basis:
+        calc.basis = basis
+        calc.meta.setdefault("inferred_from", {}).setdefault("basis", "mol")

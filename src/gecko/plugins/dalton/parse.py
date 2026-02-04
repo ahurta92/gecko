@@ -37,6 +37,18 @@ def read_dalton_mol(path: Path) -> qcel.models.Molecule:
     lines = _read_lines(mol_path)
     return parse_molfile_geometry(lines)
 
+def infer_basis_from_dalton_mol(path: Path) -> str | None:
+    """Infer the Dalton basis name from a Dalton `.mol` file."""
+    mol_path = Path(path).expanduser().resolve()
+    lines = _read_lines(mol_path)
+    for i, line in enumerate(lines):
+        if line.strip().upper() == "BASIS":
+            for j in range(i + 1, len(lines)):
+                if lines[j].strip():
+                    return lines[j].strip()
+            return None
+    return None
+
 
 def parse_last_molecular_geometry(
     lines: Sequence[str],

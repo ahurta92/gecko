@@ -95,3 +95,13 @@ def test_load_calc_dalton_pairs_discovered() -> None:
         "opt_H2O_d-aug-cc-pV6Z.mol",
         "raman_opt_H2O_d-aug-cc-pV6Z.out",
     ) in pair_names
+
+
+def test_load_calc_madqc_requires_paired_input_in_artifact() -> None:
+    root = FIXTURES / "03_mra-raman_h2o"
+    calc = load_calc(root)
+    _assert_common(calc)
+    assert calc.code == "madness"
+    assert calc.artifacts.get("calc_info_json") is not None
+    assert calc.artifacts.get("input_in") is not None
+    assert Path(calc.artifacts["input_in"]).name.endswith(".in")

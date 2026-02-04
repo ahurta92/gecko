@@ -25,11 +25,17 @@ def load(path: Path) -> Calculation:
 def _discover_artifacts(root: Path) -> dict[str, Path]:
     artifacts: dict[str, Path] = {}
 
-    # MADQC "marker": prefix.calc_info.json (prefix is user-defined or default "mad")
-    # We'll pick the first match, and later make it smarter if needed.
-    matches = list(root.glob("*.calc_info.json"))
-    if matches:
-        artifacts["calc_info_json"] = matches[0]
+    # MADQC "marker": {stem}.calc_info.json with paired {stem}.in (required by contract).
+    for p in sorted(root.glob("*.calc_info.json")):
+        stem = p.name[: -len(".calc_info.json")]
+        input_in = root / f"{stem}.in"
+        if input_in.exists():
+            artifacts["calc_info_json"] = p
+            artifacts["input_in"] = input_in
+            raw_out = root / f"{stem}.out"
+            if raw_out.exists():
+                artifacts["raw_out"] = raw_out
+            break
 
     # If you still produce something like "n12_mad_output.json" or "*_mad_output.json"
     # keep this for compatibility.
@@ -42,12 +48,6 @@ def _discover_artifacts(root: Path) -> dict[str, Path]:
     if resp_meta.exists():
         artifacts["responses_metadata_json"] = resp_meta
 
-    # If you have precomputed SHG data saved somewhere (common in older workflows)
-    for name in ("shg_ijk.csv", "beta.csv", "hyperpolarizability.csv"):
-        p = root / name
-        if p.exists():
-            artifacts["beta_csv"] = p
-            break
     # Legacy molresponse markers
     # Prefer output.json, but accept outputs.json (older databases).
     legacy = (root / "output.json")
