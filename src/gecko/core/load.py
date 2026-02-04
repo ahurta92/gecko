@@ -100,7 +100,7 @@ def load_calc(
                 artifacts["calc_info_json"] = root
             elif root.name.endswith("_mad_output.json"):
                 artifacts["mad_output_json"] = root
-            elif root.name == "output.json":
+            elif root.name in {"output.json", "outputs.json"}:
                 artifacts["output_json"] = root
             else:
                 raise ValueError(f"Unrecognized MADNESS JSON file: {root}")

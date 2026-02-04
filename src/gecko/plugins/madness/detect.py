@@ -9,7 +9,7 @@ def can_load(path: Path) -> bool:
 
     Supports:
       - MADQC style: *.calc_info.json
-      - Legacy molresponse style: output.json
+      - Legacy molresponse style: output.json / outputs.json
       - Optional: responses/metadata.json
     """
     if not path.exists() or not path.is_dir():
@@ -21,6 +21,8 @@ def can_load(path: Path) -> bool:
 
     # Legacy molresponse marker
     if (path / "output.json").exists():
+        return True
+    if (path / "outputs.json").exists():
         return True
 
     # Optional common marker

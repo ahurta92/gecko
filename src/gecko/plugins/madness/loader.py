@@ -48,10 +48,15 @@ def _discover_artifacts(root: Path) -> dict[str, Path]:
         if p.exists():
             artifacts["beta_csv"] = p
             break
-    # Keep old json marker too
-    mad_out = next(iter(root.glob("output.json")), None)
-    if mad_out:
-        artifacts["output_json"] = mad_out
+    # Legacy molresponse markers
+    # Prefer output.json, but accept outputs.json (older databases).
+    legacy = (root / "output.json")
+    if legacy.exists():
+        artifacts["output_json"] = legacy
+    else:
+        legacy_plural = (root / "outputs.json")
+        if legacy_plural.exists():
+            artifacts["output_json"] = legacy_plural
 
     input_json = root / "input.json"
     if input_json.exists():
