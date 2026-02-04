@@ -379,6 +379,8 @@ def _parse_beta_from_quad_lines(lines: list[str]) -> dict[str, Any] | None:
     )
 
     freq_map: dict[tuple[float, float, float], dict[str, float]] = {}
+    alias_map: dict[tuple[float, float, float], dict[str, str]] = {}
+    alias_pattern = re.compile(r"beta\((X|Y|Z)(?:;|,)?(X|Y|Z),(X|Y|Z)\)")
 
     for line in lines[start_idx:]:
         if not line.startswith(_BETA_LINE_PREFIX):
@@ -387,20 +389,68 @@ def _parse_beta_from_quad_lines(lines: list[str]) -> dict[str, Any] | None:
         if not match:
             continue
         b_freq, c_freq, a1, a2, a3, value_raw = match.groups()
+        value = None
         try:
             value = float(str(value_raw).split()[0])
         except ValueError:
-            continue
+            value = None
 
         b = float(b_freq)
         c = float(c_freq)
         a = -(b + c)
         ijk = f"{a1}{a2}{a3}".lower()
         key = (a, b, c)
-        freq_map.setdefault(key, {})[ijk] = value
+        if value is not None:
+            freq_map.setdefault(key, {})[ijk] = value
+        else:
+            alias_match = alias_pattern.search(str(value_raw))
+            if alias_match:
+                b1, b2, b3 = alias_match.groups()
+                alias_comp = f"{b1}{b2}{b3}".lower()
+                alias_map.setdefault(key, {})[ijk] = alias_comp
 
-    if not freq_map:
+    if not freq_map and not alias_map:
         return None
+
+    # Resolve within-frequency aliases (e.g., beta(X;Y,X) = beta(Y,X,X)).
+    for key, aliases in alias_map.items():
+        comp_map = freq_map.setdefault(key, {})
+        pending = dict(aliases)
+        for _ in range(len(pending) + 1):
+            changed = False
+            for comp, alias in list(pending.items()):
+                if comp in comp_map:
+                    pending.pop(comp, None)
+                    continue
+                if alias in comp_map:
+                    comp_map[comp] = comp_map[alias]
+                    pending.pop(comp, None)
+                    changed = True
+            if not changed:
+                break
+
+    # Fill remaining components by swapping B/C frequencies and j/k indices when possible.
+    all_components: set[str] = set()
+    for comp_map in freq_map.values():
+        all_components.update(comp_map.keys())
+    for aliases in alias_map.values():
+        all_components.update(aliases.keys())
+        all_components.update(aliases.values())
+
+    for key, comp_map in freq_map.items():
+        a, b, c = key
+        swap_key = (a, c, b)
+        if swap_key not in freq_map:
+            continue
+        swap_map = freq_map[swap_key]
+        for comp in all_components:
+            if comp in comp_map:
+                continue
+            if len(comp) != 3:
+                continue
+            swap_comp = f"{comp[0]}{comp[2]}{comp[1]}"
+            if swap_comp in swap_map:
+                comp_map[comp] = swap_map[swap_comp]
 
     freq_list = sorted(freq_map.keys())
     components = sorted({comp for entry in freq_map.values() for comp in entry.keys()})
