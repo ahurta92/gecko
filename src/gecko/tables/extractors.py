@@ -61,8 +61,6 @@ def extract_alpha(calc: Calculation) -> list[dict[str, Any]]:
         return []
 
     env = make_envelope(calc)
-    if not _require_geom(env):
-        return []
 
     omega = np.asarray(alpha.get("omega", []), dtype=float).reshape(-1)
     comps = list(alpha.get("components", []))
@@ -86,8 +84,6 @@ def _find_task(raw_json: dict[str, Any], task_type: str) -> dict[str, Any] | Non
 
 def extract_energy(calc: Calculation) -> list[dict[str, Any]]:
     env = make_envelope(calc)
-    if not _require_geom(env):
-        return []
 
     energy = calc.meta.get("ground_state_energy")
     if energy is None:
