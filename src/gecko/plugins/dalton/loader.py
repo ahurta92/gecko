@@ -8,6 +8,38 @@ from gecko.plugins.dalton.detect import can_load
 from gecko.plugins.dalton.parse import parse_run
 from gecko.plugins.dalton.parse import infer_basis_from_dalton_mol
 
+
+def _infer_method_from_dalton_dal(path: Path) -> str | None:
+    try:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+    except Exception:
+        return None
+
+    lines = [ln.strip().upper() for ln in text.splitlines() if ln.strip()]
+
+    if any(ln.startswith(".DFT") for ln in lines):
+        for ln in lines:
+            if ln.startswith(".B3LYP"):
+                return "B3LYP"
+            if ln.startswith(".PBE0"):
+                return "PBE0"
+            if ln.startswith(".PBE"):
+                return "PBE"
+            if ln.startswith(".CAMB3LYP"):
+                return "CAMB3LYP"
+            if ln.startswith(".LDA"):
+                return "LDA"
+
+    for key, method in (
+        (".MP2", "MP2"),
+        (".CCSD", "CCSD"),
+        (".CCSD(T)", "CCSD(T)"),
+        (".HF", "HF"),
+    ):
+        if any(ln.startswith(key) for ln in lines):
+            return method
+    return None
+
 def load(
     path: Path,
     *,
@@ -28,6 +60,7 @@ def load(
         calc.meta["calc_key"] = f"{root}:{run_id}"
     parse_run(calc)
     _maybe_attach_basis_from_pairs(calc)
+    _maybe_attach_method_from_dal(calc)
     return calc
 
 
@@ -113,3 +146,20 @@ def _maybe_attach_basis_from_pairs(calc: Calculation) -> None:
         calc.basis = basis
         calc.meta["basis"] = calc.basis
         calc.meta.setdefault("inferred_from", {}).setdefault("basis", "mol")
+
+
+def _maybe_attach_method_from_dal(calc: Calculation) -> None:
+    if calc.meta.get("method"):
+        return
+
+    dal_files = calc.artifacts.get("dalton_dal_files")
+    if not isinstance(dal_files, list) or not dal_files:
+        return
+
+    for dal in dal_files:
+        if not isinstance(dal, Path):
+            continue
+        method = _infer_method_from_dalton_dal(dal)
+        if method:
+            calc.meta["method"] = method
+            return

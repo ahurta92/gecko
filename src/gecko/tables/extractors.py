@@ -8,10 +8,11 @@ from gecko.core.model import Calculation
 
 
 def make_envelope(calc: Calculation) -> dict[str, Any]:
+    mol_id = calc.meta.get("mol_id") or calc.meta.get("molecule_id")
     return {
         "calc_id": calc.meta.get("calc_id"),
         "geom_id": calc.meta.get("geom_id"),
-        "mol_id": calc.meta.get("mol_id"),
+        "mol_id": mol_id,
         "molecule_id": calc.meta.get("molecule_id"),
         "label": calc.meta.get("label"),
         "code": calc.code,

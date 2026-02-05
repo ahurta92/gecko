@@ -138,6 +138,26 @@ def _infer_mra_basis_from_input_in_text(text: str) -> str | None:
     return None
 
 
+def _infer_method_from_input_in_text(text: str) -> str | None:
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip() and not ln.strip().startswith("#")]
+    lower_lines = [ln.lower() for ln in lines]
+
+    for ln in lower_lines:
+        if ln.startswith("xc"):
+            parts = ln.split()
+            if len(parts) >= 2:
+                return parts[1].upper()
+            return None
+
+    if any(ln.startswith("mp2") for ln in lower_lines):
+        return "MP2"
+    if any(ln.startswith("hf") for ln in lower_lines):
+        return "HF"
+    if any(ln.startswith("dft") for ln in lower_lines):
+        return "HF"
+    return None
+
+
 def parse_run(calc: Calculation) -> None:
     """
     Populate calc.data for MADNESS runs.
@@ -173,6 +193,13 @@ def parse_run(calc: Calculation) -> None:
             )
         except Exception:
             basis = None
+        if calc.meta.get("method") is None:
+            try:
+                calc.meta["method"] = _infer_method_from_input_in_text(
+                    input_in.read_text(encoding="utf-8", errors="ignore")
+                )
+            except Exception:
+                pass
 
     input_json = calc.artifacts.get("input_json")
     if isinstance(input_json, Path) and input_json.exists():

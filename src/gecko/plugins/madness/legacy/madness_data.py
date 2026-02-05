@@ -170,6 +170,11 @@ class madqc_parser:
             if "energy" in scf_task:
                 self.ground_state_energy = scf_task.get("energy")
 
+        if self.ground_state_energy is None:
+            moldft = json_data.get("moldft")
+            if isinstance(moldft, dict) and "energy" in moldft:
+                self.ground_state_energy = moldft.get("energy")
+
         # MADQC-style: tasks[*].scf block
         # Try to find molecule + eigenvalues if present (optional)
         try:

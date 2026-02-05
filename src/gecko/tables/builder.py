@@ -83,3 +83,92 @@ class TableBuilder:
         for calc in self.calcs:
             rows.extend(extract_raman(calc))
         return pd.DataFrame(rows)
+
+    def compare_energy(
+        self,
+        *,
+        ref_basis: str,
+        keys: list[str] | None = None,
+        rel_eps: float = 1e-12,
+    ) -> pd.DataFrame:
+        df = self.build_energy()
+        if df.empty:
+            return df
+
+        if keys is None:
+            keys = ["mol_id", "method"]
+
+        pivot = df.pivot_table(index=keys, columns="basis", values="energy", aggfunc="first")
+        pivot = pivot.reset_index()
+
+        if ref_basis not in pivot.columns:
+            basis_cols = [c for c in pivot.columns if c not in keys]
+            mra_cols = [c for c in basis_cols if str(c).startswith("mra-")]
+            ref_basis = (mra_cols[0] if mra_cols else (basis_cols[0] if basis_cols else ref_basis))
+            if ref_basis not in pivot.columns:
+                return pivot
+
+        basis_cols = [c for c in pivot.columns if c not in keys]
+        ref_vals = pivot[ref_basis].astype(float)
+
+        for basis in basis_cols:
+            if basis == ref_basis:
+                continue
+            col = pivot[basis].astype(float)
+            delta = col - ref_vals
+            rel = np.where(np.abs(ref_vals) > rel_eps, delta / np.abs(ref_vals), np.nan)
+            pivot[f"delta_{basis}"] = delta
+            pivot[f"rel_{basis}"] = rel
+
+        pivot.attrs["ref_basis"] = ref_basis
+        return pivot
+
+    def compare_energy_long(
+        self,
+        *,
+        ref_basis: str,
+        keys: list[str] | None = None,
+        rel_eps: float = 1e-12,
+    ) -> pd.DataFrame:
+        df = self.build_energy()
+        if df.empty:
+            return df
+
+        if keys is None:
+            keys = ["mol_id", "method"]
+
+        pivot = df.pivot_table(index=keys, columns="basis", values="energy", aggfunc="first")
+        pivot = pivot.reset_index()
+
+        if ref_basis not in pivot.columns:
+            basis_cols = [c for c in pivot.columns if c not in keys]
+            mra_cols = [c for c in basis_cols if str(c).startswith("mra-")]
+            ref_basis = (mra_cols[0] if mra_cols else (basis_cols[0] if basis_cols else ref_basis))
+            if ref_basis not in pivot.columns:
+                return pd.DataFrame()
+
+        basis_cols = [c for c in pivot.columns if c not in keys]
+        ref_vals = pivot[ref_basis].astype(float)
+
+        long_rows: list[dict[str, Any]] = []
+        for _, row in pivot.iterrows():
+            for basis in basis_cols:
+                if basis == ref_basis:
+                    continue
+                val = float(row[basis])
+                ref_val = float(row[ref_basis])
+                delta = val - ref_val
+                rel = delta / abs(ref_val) if abs(ref_val) > rel_eps else np.nan
+                long_rows.append(
+                    {
+                        **{k: row[k] for k in keys},
+                        "ref_basis": ref_basis,
+                        "basis": basis,
+                        "energy": val,
+                        "ref_energy": ref_val,
+                        "delta": delta,
+                        "rel": rel,
+                    }
+                )
+
+        return pd.DataFrame(long_rows)

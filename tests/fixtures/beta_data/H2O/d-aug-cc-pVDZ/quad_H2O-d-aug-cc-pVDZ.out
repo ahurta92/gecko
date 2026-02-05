@@ -1,0 +1,2364 @@
+
+
+     ************************************************************************
+     *************** Dalton - An Electronic Structure Program ***************
+     ************************************************************************
+
+    This is output from DALTON release Dalton2020.0 (2020)
+         ( Web site: http://daltonprogram.org )
+
+   ----------------------------------------------------------------------------
+
+    NOTE:
+     
+    Dalton is an experimental code for the evaluation of molecular
+    properties using (MC)SCF, DFT, CI, and CC wave functions.
+    The authors accept no responsibility for the performance of
+    the code or for the correctness of the results.
+     
+    The code (in whole or part) is provided under a licence and
+    is not to be reproduced for further distribution without
+    the written permission of the authors or their representatives.
+     
+    See the home page "http://daltonprogram.org" for further information.
+     
+    If results obtained with this code are published,
+    the appropriate citations would be both of:
+     
+       K. Aidas, C. Angeli, K. L. Bak, V. Bakken, R. Bast,
+       L. Boman, O. Christiansen, R. Cimiraglia, S. Coriani,
+       P. Dahle, E. K. Dalskov, U. Ekstroem,
+       T. Enevoldsen, J. J. Eriksen, P. Ettenhuber, B. Fernandez,
+       L. Ferrighi, H. Fliegl, L. Frediani, K. Hald, A. Halkier,
+       C. Haettig, H. Heiberg, T. Helgaker, A. C. Hennum,
+       H. Hettema, E. Hjertenaes, S. Hoest, I.-M. Hoeyvik,
+       M. F. Iozzi, B. Jansik, H. J. Aa. Jensen, D. Jonsson,
+       P. Joergensen, J. Kauczor, S. Kirpekar,
+       T. Kjaergaard, W. Klopper, S. Knecht, R. Kobayashi, H. Koch,
+       J. Kongsted, A. Krapp, K. Kristensen, A. Ligabue,
+       O. B. Lutnaes, J. I. Melo, K. V. Mikkelsen, R. H. Myhre,
+       C. Neiss, C. B. Nielsen, P. Norman, J. Olsen,
+       J. M. H. Olsen, A. Osted, M. J. Packer, F. Pawlowski,
+       T. B. Pedersen, P. F. Provasi, S. Reine, Z. Rinkevicius,
+       T. A. Ruden, K. Ruud, V. Rybkin, P. Salek, C. C. M. Samson,
+       A. Sanchez de Meras, T. Saue, S. P. A. Sauer,
+       B. Schimmelpfennig, K. Sneskov, A. H. Steindal,
+       K. O. Sylvester-Hvid, P. R. Taylor, A. M. Teale,
+       E. I. Tellgren, D. P. Tew, A. J. Thorvaldsen, L. Thoegersen,
+       O. Vahtras, M. A. Watson, D. J. D. Wilson, M. Ziolkowski
+       and H. Agren,
+       "The Dalton quantum chemistry program system",
+       WIREs Comput. Mol. Sci. 2014, 4:269–284 (doi: 10.1002/wcms.1172)
+     
+    and
+     
+       Dalton, a molecular electronic structure program,
+       Release Dalton2020.0 (2020), see http://daltonprogram.org
+   ----------------------------------------------------------------------------
+
+    Authors in alphabetical order (Major contribution(s) in parenthesis):
+
+  Kestutis Aidas,           Vilnius University,           Lithuania   (QM/MM)
+  Celestino Angeli,         University of Ferrara,        Italy       (NEVPT2)
+  Keld L. Bak,              UNI-C,                        Denmark     (AOSOPPA, non-adiabatic coupling, magnetic properties)
+  Vebjoern Bakken,          University of Oslo,           Norway      (DALTON; geometry optimizer, symmetry detection)
+  Radovan Bast,             UiT The Arctic U. of Norway,  Norway      (DALTON installation and execution frameworks)
+  Pablo Baudin,             University of Valencia,       Spain       (Cholesky excitation energies)
+  Linus Boman,              NTNU,                         Norway      (Cholesky decomposition and subsystems)
+  Bruno N. Cabral Tenorio,  Technical Univ. of Denmark,   Denmark     (Lanczos-based CC methods)
+  Ove Christiansen,         Aarhus University,            Denmark     (CC module)
+  Renzo Cimiraglia,         University of Ferrara,        Italy       (NEVPT2)
+  Sonia Coriani,            Technical Univ. of Denmark,   Denmark     (CC and RESPONS modules)
+  Janusz Cukras,            University of Warsaw,         Poland      (MChD in RESPONS)
+  Paal Dahle,               University of Oslo,           Norway      (Parallelization)
+  Erik K. Dalskov,          UNI-C,                        Denmark     (SOPPA)
+  Thomas Enevoldsen,        Univ. of Southern Denmark,    Denmark     (SOPPA)
+  Janus J. Eriksen,         Aarhus University,            Denmark     (Polarizable embedding, TDA)
+  Rasmus Faber,             Technical Univ. of Denmark,   Denmark     (Vib.avg. NMR w. SOPPA, parallel AO-SOPPA, CVS-CC and EOMCC)
+  Tobias Fahleson,          KTH Stockholm,                Sweden      (Damped cubic response)
+  Berta Fernandez,          U. of Santiago de Compostela, Spain       (Doublet spin, ESR in RESPONS)
+  Lara Ferrighi,            Aarhus University,            Denmark     (PCM Cubic response)
+  Heike Fliegl,             University of Oslo,           Norway      (CCSD(R12))
+  Luca Frediani,            UiT The Arctic U. of Norway,  Norway      (PCM)
+  Emmanuel Fromager,        Univ. Strasbourg,             France      (MC-srDFT)
+  Bin Gao,                  UiT The Arctic U. of Norway,  Norway      (Gen1Int library)
+  Andre S. P. Gomes,        CNRS/Universite de Lille,     France      (Frozen density embedding)
+  Christof Haettig,         Ruhr-University Bochum,       Germany     (CC module)
+  Kasper Hald,              Aarhus University,            Denmark     (CC module)
+  Asger Halkier,            Aarhus University,            Denmark     (CC module)
+  Frederik Beyer Hansen,    University of Copenhagen,     Denmark     (Parallel AO-SOPPA)
+  Erik D. Hedegaard,        Univ. of Southern Denmark,    Denmark     (Polarizable embedding, QM/MM, and MC-srDFT)
+  Hanne Heiberg,            University of Oslo,           Norway      (Geometry analysis, selected one-electron integrals)
+  Trygve Helgaker,          University of Oslo,           Norway      (DALTON; ABACUS, ERI, DFT modules, London, and much more)
+  Alf Christian Hennum,     University of Oslo,           Norway      (Parity violation)
+  Hinne Hettema,            University of Auckland,       New Zealand (Quadratic response in RESPONS; SIRIUS supersymmetry)
+  Eirik Hjertenaes,         NTNU,                         Norway      (Cholesky decomposition)
+  Pi A. B. Haase,           University of Copenhagen,     Denmark     (Triplet AO-SOPPA)
+  Maria Francesca Iozzi,    University of Oslo,           Norway      (RPA)
+  Christoph Jacob           TU Braunschweig               Germany     (Frozen density embedding)
+  Brano Jansik              Technical Univ. of Ostrava    Czech Rep.  (DFT cubic response)
+  Hans Joergen Aa. Jensen,  Univ. of Southern Denmark,    Denmark     (DALTON; SIRIUS, RESPONS, ABACUS, MC-srDFT, and much more)
+  Dan Jonsson,              UiT The Arctic U. of Norway,  Norway      (Cubic response in RESPONS module)
+  Poul Joergensen,          Aarhus University,            Denmark     (RESPONS, ABACUS, and CC modules)
+  Maciej Kaminski,          University of Warsaw,         Poland      (CPPh in RESPONS)
+  Joanna Kauczor,           Linkoeping University,        Sweden      (Complex polarization propagator (CPP) module)
+  Sheela Kirpekar,          Univ. of Southern Denmark,    Denmark     (Mass-velocity & Darwin integrals)
+  Erik Kjellgren,           Univ. of Southern Denmark,    Denmark     (MC-srDFT)
+  Wim Klopper,              KIT Karlsruhe,                Germany     (R12 code in CC, SIRIUS, and ABACUS modules)
+  Stefan Knecht,            ETH Zurich,                   Switzerland (Parallel CI and MCSCF, MC-srDFT)
+  Rika Kobayashi,           Australian National Univ.,    Australia   (DIIS in CC, London in MCSCF)
+  Henrik Koch,              NTNU,                         Norway      (CC module, Cholesky decomposition)
+  Jacob Kongsted,           Univ. of Southern Denmark,    Denmark     (Polarizable embedding, polarizable density embedding, QM/MM)
+  Andrea Ligabue,           University of Modena,         Italy       (CTOCD, AOSOPPA)
+  Nanna H. List             Univ. of Southern Denmark,    Denmark     (Polarizable embedding)
+  Ola B. Lutnaes,           University of Oslo,           Norway      (DFT Hessian)
+  Juan I. Melo,             University of Buenos Aires,   Argentina   (LRESC, Relativistic Effects on NMR Shieldings)
+  Kurt V. Mikkelsen,        University of Copenhagen,     Denmark     (MC-SCRF and QM/MM)
+  Rolf H. Myhre,            NTNU,                         Norway      (Subsystems and CC3)
+  Christian Neiss,          Univ. Erlangen-Nuernberg,     Germany     (CCSD(R12))
+  Christian B. Nielsen,     University of Copenhagen,     Denmark     (QM/MM)
+  Patrick Norman,           KTH Stockholm,                Sweden      (Cubic response and complex frequency response in RESPONS)
+  Jeppe Olsen,              Aarhus University,            Denmark     (SIRIUS CI/density modules)
+  Jogvan Magnus H. Olsen,   Aarhus University,            Denmark     (Polarizable embedding and polarizable density embedding)
+  Anders Osted,             Copenhagen University,        Denmark     (QM/MM)
+  Martin J. Packer,         University of Sheffield,      UK          (SOPPA)
+  Filip Pawlowski,          Kazimierz Wielki University,  Poland      (CC3)
+  Morten N. Pedersen,       Univ. of Southern Denmark,    Denmark     (Polarizable embedding)
+  Thomas B. Pedersen,       University of Oslo,           Norway      (Cholesky decomposition)
+  Patricio F. Provasi,      University of Northeastern,   Argentina   (Analysis of coupling constants in localized orbitals)
+  Peter Reinholdt,          Univ. of Southern Denmark,    Denmark     (Polarizable embedding and polarizable density embedding)
+  Zilvinas Rinkevicius,     KTH Stockholm,                Sweden      (open-shell DFT, ESR)
+  Elias Rudberg,            KTH Stockholm,                Sweden      (DFT grid and basis info)
+  Torgeir A. Ruden,         University of Oslo,           Norway      (Numerical derivatives in ABACUS)
+  Kenneth Ruud,             UiT The Arctic U. of Norway,  Norway      (DALTON; ABACUS magnetic properties and much more)
+  Pawel Salek,              KTH Stockholm,                Sweden      (DALTON; DFT code)
+  Claire C. M. Samson       University of Karlsruhe       Germany     (Boys localization, r12 integrals in ERI)
+  Alfredo Sanchez de Meras, University of Valencia,       Spain       (CC module, Cholesky decomposition)
+  Trond Saue,               Paul Sabatier University,     France      (direct Fock matrix construction)
+  Stephan P. A. Sauer,      University of Copenhagen,     Denmark     (SOPPA(CCSD), SOPPA prop., AOSOPPA, vibrational g-factors)
+  Bernd Schimmelpfennig,    Forschungszentrum Karlsruhe,  Germany     (AMFI module)
+  Anna K. Schnack-Petersen, University of Copenhagen,     Denmark     (RPA(D) and HRPA(D) properties in AOSOPPA)
+  Kristian Sneskov,         Aarhus University,            Denmark     (Polarizable embedding, QM/MM)
+  Arnfinn H. Steindal,      UiT The Arctic U. of Norway,  Norway      (parallel QM/MM, polarizable embedding)
+  Casper Steinmann,         Aalborg University,           Denmark     (QFIT, polarizable embedding)
+  K. O. Sylvester-Hvid,     University of Copenhagen,     Denmark     (MC-SCRF)
+  Peter R. Taylor,          VLSCI/Univ. of Melbourne,     Australia   (Symmetry handling ABACUS, integral transformation)
+  Andrew M. Teale,          University of Nottingham,     England     (DFT-AC, DFT-D)
+  David P. Tew,             University of Bristol,        England     (CCSD(R12))
+  Julien Toulouse,          Sorbonne Univ.,               France      (MC-srDFT)
+  Olav Vahtras,             KTH Stockholm,                Sweden      (Triplet response, spin-orbit, ESR, TDDFT, open-shell DFT)
+  Lucas Visscher,           Vrije Universiteit Amsterdam, Netherlands (Frozen density embedding)
+  David J. Wilson,          La Trobe University,          Australia   (DFT Hessian and DFT magnetizabilities)
+  Hans Agren,               KTH Stockholm,                Sweden      (SIRIUS module, RESPONS, MC-SCRF solvation)
+ --------------------------------------------------------------------------------
+
+     Date and time (Linux)  : Thu Sep  7 17:48:50 2023
+     Host name              : sn-mem                                  
+
+ * Work memory size             :    64000000 =  488.28 megabytes.
+
+ * Directories for basis set searches:
+   1) /gpfs/projects/rjh/adrian/august_no_symmetry/dalton/hf/H2O/dipole
+   2) /gpfs/projects/rjh/adrian/dalton/build/basis
+
+
+Compilation information
+-----------------------
+
+ Who compiled             | ahurtado
+ Host                     | sn-mem
+ System                   | Linux-3.10.0-1160.24.1.el7.x86_64
+ CMake generator          | Unix Makefiles
+ Processor                | x86_64
+ 64-bit integers          | OFF
+ MPI                      | ON
+ Fortran compiler         | /gpfs/software/intel/oneAPI/2021_4/mpi/2021.4.0/bi
+                          | n/mpif90
+ Fortran compiler version | GNU Fortran (GCC) 11.2.0
+ C compiler               | /gpfs/software/intel/oneAPI/2021_4/mpi/2021.4.0/bi
+                          | n/mpicc
+ C compiler version       | gcc (GCC) 11.2.0
+ C++ compiler             | /gpfs/software/intel/oneAPI/2021_4/mpi/2021.4.0/bi
+                          | n/mpicxx
+ C++ compiler version     | unknown
+ BLAS                     | /gpfs/software/intel/oneAPI/2021_4/mkl/2021.4.0/li
+                          | b/intel64/libmkl_gf_lp64.so;/gpfs/software/intel/o
+                          | neAPI/2021_4/mkl/2021.4.0/lib/intel64/libmkl_seque
+                          | ntial.so;/gpfs/software/intel/oneAPI/2021_4/mkl/20
+                          | 21.4.0/lib/intel64/libmkl_core.so;/usr/lib64/libpt
+                          | hread.so;/usr/lib64/libm.so
+ LAPACK                   | /gpfs/software/intel/oneAPI/2021_4/mkl/2021.4.0/li
+                          | b/intel64/libmkl_lapack95_lp64.a;/gpfs/software/in
+                          | tel/oneAPI/2021_4/mkl/2021.4.0/lib/intel64/libmkl_
+                          | gf_lp64.so
+ Static linking           | OFF
+ Last Git revision        | 66052b3af5ea7225e31178bf9a8b031913c72190
+ Git branch               | (HEAD detached at Dalton2020.0)
+ Configuration time       | 2023-01-11 13:33:37.731835
+
+ * MPI parallel run using 5 processes.
+
+
+   Content of the .dal input file
+ ----------------------------------
+
+**DALTON INPUT
+.RUN RESPONSE
+.DIRECT
+**WAVE FUNCTIONS
+.HF
+**PROPERTIES
+**RESPONSE
+*QUADRA
+.DIPLEN
+.FREQUENCIES
+5
+0.0 0.0198666875 0.039733375 0.0596000625 0.07946675
+**END OF DALTON INPUT
+
+
+   Content of the .mol file
+ ----------------------------
+
+BASIS
+d-aug-cc-pVDZ
+blah
+blah
+Atomtype=2 Angstrom Charge=0 Nosymmmetry
+Charge=8 Atoms=1
+O_a 0.000000000000 0.000000000000 0.117299997610
+Charge=1 Atoms=2
+H_a 0.000000000000 0.757199998838 -0.469200001024
+H_b 0.000000000000 -0.757199998838 -0.469200001024
+
+
+       *******************************************************************
+       *********** Output from DALTON general input processing ***********
+       *******************************************************************
+
+ --------------------------------------------------------------------------------
+   Overall default print level:    0
+   Print level for DALTON.STAT:    1
+
+    Parallel calculation using MPI
+    AO-direct calculation (in sections where implemented)
+    HERMIT 1- and 2-electron integral sections will be executed
+    "Old" integral transformation used (limited to max 255 basis functions)
+    Wave function sections will be executed (SIRIUS module)
+    Dynamic molecular response properties section will be executed (RESPONSE module)
+ --------------------------------------------------------------------------------
+
+
+   ****************************************************************************
+   *************** Output of molecule and basis set information ***************
+   ****************************************************************************
+
+
+    The two title cards from your ".mol" input:
+    ------------------------------------------------------------------------
+ 1: blah                                                                    
+ 2: blah                                                                    
+    ------------------------------------------------------------------------
+
+  Coordinates are entered in Angstrom and converted to atomic units.
+          - Conversion factor : 1 bohr = 0.52917721 A
+
+  Atomic type no.    1
+  --------------------
+  Nuclear charge:   8.00000
+  Number of symmetry independent centers:    1
+  Number of basis sets to read;    2
+  Basis set file used for this atomic type with Z =   8 :
+     "/gpfs/projects/rjh/adrian/dalton/build/basis/aug-cc-pVDZ"
+
+  Atomic type no.    2
+  --------------------
+  Nuclear charge:   1.00000
+  Number of symmetry independent centers:    2
+  Number of basis sets to read;    2
+  Basis set file used for this atomic type with Z =   1 :
+     "/gpfs/projects/rjh/adrian/dalton/build/basis/aug-cc-pVDZ"
+
+
+                         SYMGRP: Point group information
+                         -------------------------------
+
+@    Point group: C1 
+
+
+                                 Isotopic Masses
+                                 ---------------
+
+                           O_a        15.994915
+                           H_a         1.007825
+                           H_b         1.007825
+
+                       Total mass:    18.010565 amu
+                       Natural abundance:  99.730 %
+
+ Center-of-mass coordinates (a.u.):    0.000000    0.000000    0.097627
+ Center-of-mass coordinates (Angs):    0.000000    0.000000    0.051662
+
+
+  Atoms and basis sets
+  --------------------
+
+  Number of atom types :    2
+  Total number of atoms:    3
+
+  Basis set used is "d-aug-cc-pVDZ" from the basis set library.
+
+  label    atoms   charge   prim   cont     basis
+  ----------------------------------------------------------------------
+  O_          1    8.0000    44    32      [11s6p3d|5s4p3d]                                   
+  H_          2    1.0000    15    13      [6s3p|4s3p]                                        
+  ----------------------------------------------------------------------
+  total:      3   10.0000    74    58
+  ----------------------------------------------------------------------
+  Spherical harmonic basis used.
+
+  Threshold for neglecting AO integrals:  1.00D-12
+
+
+  Cartesian Coordinates (a.u.)
+  ----------------------------
+
+  Total number of coordinates:    9
+  O_a     :     1  x   0.0000000000    2  y   0.0000000000    3  z   0.2216648699
+  H_a     :     4  x   0.0000000000    5  y   1.4309006196    6  z  -0.8866594998
+  H_b     :     7  x   0.0000000000    8  y  -1.4309006196    9  z  -0.8866594998
+
+
+   Interatomic separations (in Angstrom):
+   --------------------------------------
+
+            O_a         H_a         H_b   
+            ------      ------      ------
+ O_a   :    0.000000
+ H_a   :    0.957776    0.000000
+ H_b   :    0.957776    1.514400    0.000000
+
+
+  Max    interatomic separation is    1.5144 Angstrom (    2.8618 Bohr)
+  between atoms    3 and    2, "H_b   " and "H_a   ".
+
+  Min HX interatomic separation is    0.9578 Angstrom (    1.8099 Bohr)
+
+
+  Bond distances (Angstrom):
+  --------------------------
+
+                  atom 1     atom 2       distance
+                  ------     ------       --------
+  bond distance:  H_a        O_a          0.957776
+  bond distance:  H_b        O_a          0.957776
+
+
+  Bond angles (degrees):
+  ----------------------
+
+                  atom 1     atom 2     atom 3         angle
+                  ------     ------     ------         -----
+  bond angle:     H_a        O_a        H_b          104.480
+
+
+
+
+ Principal moments of inertia (u*A**2) and principal axes
+ --------------------------------------------------------
+
+   IA       0.615752          0.000000    1.000000    0.000000
+   IB       1.155677          0.000000    0.000000    1.000000
+   IC       1.771429          1.000000    0.000000    0.000000
+
+
+ Rotational constants
+ --------------------
+
+@    The molecule is planar.
+
+               A                   B                   C
+
+         820751.0438         437301.3971         285294.6081 MHz
+           27.377308           14.586804            9.516404 cm-1
+
+
+@  Nuclear repulsion energy :    9.189533777587 Hartree
+
+
+                     .---------------------------------------.
+                     | Starting in Integral Section (HERMIT) |
+                     `---------------------------------------'
+
+
+
+ ***************************************************************************************
+ ****************** Output from **INTEGRALS input processing (HERMIT) ******************
+ ***************************************************************************************
+
+
+ - Using defaults, no **INTEGRALS input found
+
+ Default print level:        1
+
+ Calculation of one-electron Hamiltonian integrals.
+
+ Center of mass  (bohr):      0.000000000000      0.000000000000      0.097626894688
+ Operator center (bohr):      0.000000000000      0.000000000000      0.000000000000
+ Gauge origin    (bohr):      0.000000000000      0.000000000000      0.000000000000
+ Dipole origin   (bohr):      0.000000000000      0.000000000000      0.000000000000
+
+
+     ************************************************************************
+     ************************** Output from HERINT **************************
+     ************************************************************************
+
+
+
+                      Nuclear contribution to dipole moments
+                      --------------------------------------
+
+                 au               Debye          C m (/(10**-30)
+
+      x      0.00000000         0.00000000         0.00000000
+      y      0.00000000         0.00000000         0.00000000
+      z     -0.00000004        -0.00000010        -0.00000034
+
+
+  Total CPU  time used in HERMIT:   0.04 seconds
+  Total wall time used in HERMIT:   0.04 seconds
+
+
+                        .----------------------------------.
+                        | End of Integral Section (HERMIT) |
+                        `----------------------------------'
+
+
+
+                   .--------------------------------------------.
+                   | Starting in Wave Function Section (SIRIUS) |
+                   `--------------------------------------------'
+
+
+ *** Output from Huckel module :
+
+     Using EWMO model:          T
+     Using EHT  model:          F
+     Number of Huckel orbitals each symmetry:    7
+
+ EWMO - Energy Weighted Maximum Overlap - is a Huckel type method,
+        which normally is better than Extended Huckel Theory.
+ Reference: Linderberg and Ohrn, Propagators in Quantum Chemistry (Wiley, 1973)
+
+ Huckel EWMO eigenvalues for symmetry :  1
+          -20.684959      -1.611341      -0.778168      -0.688462      -0.616200
+           -0.232449      -0.168322
+
+ **********************************************************************
+ *SIRIUS* a direct, restricted step, second order MCSCF program       *
+ **********************************************************************
+
+ 
+     Date and time (Linux)  : Thu Sep  7 17:48:50 2023
+     Host name              : sn-mem                                  
+
+ Title lines from ".mol" input file:
+     blah                                                                    
+     blah                                                                    
+
+ Print level on unit LUPRI =   2 is   0
+ Print level on unit LUW4  =   2 is   5
+
+@    Restricted, closed shell Hartree-Fock calculation.
+
+@    Time-dependent Hartree-Fock calculation (random phase approximation).
+ Fock matrices are calculated directly and in parallel without use of integrals on disk.
+
+ Initial molecular orbitals are obtained according to
+ ".MOSTART EWMO  " input option
+
+     Wave function specification
+     ============================
+@    Wave function type        --- HF ---
+@    Number of closed shell electrons          10
+@    Number of electrons in active shells       0
+@    Total charge of the molecule               0
+
+@    Spin multiplicity and 2 M_S                1         0
+@    Total number of symmetries                 1 (point group: C1 )
+@    Reference state symmetry                   1 (irrep name : A  )
+
+     Orbital specifications
+     ======================
+@    Abelian symmetry species          All |    1
+@                                          |  A  
+                                       --- |  ---
+@    Occupied SCF orbitals               5 |    5
+@    Secondary orbitals                 53 |   53
+@    Total number of orbitals           58 |   58
+@    Number of basis functions          58 |   58
+
+     Optimization information
+     ========================
+@    Number of configurations                 1
+@    Number of orbital rotations            265
+     ------------------------------------------
+@    Total number of variables              266
+
+     Maximum number of Fock   iterations      0
+     Maximum number of DIIS   iterations     60
+     Maximum number of QC-SCF iterations     60
+     Threshold for SCF convergence     1.00D-05
+
+
+ ***********************************************
+ ***** DIIS acceleration of SCF iterations *****
+ ***********************************************
+
+ C1-DIIS algorithm; max error vectors =    8
+
+ Iter      Total energy        Error norm    Delta(E)  DIIS dim.
+ -----------------------------------------------------------------------------
+   1  Screening settings (-IFTHRS, JTDIIS, DIFDEN, times)   -7    1    T  4.08D-02  4.10D-02
+@  1    -75.8570481363        1.72287D+00   -7.59D+01    1
+      Virial theorem: -V/T =      1.997654
+@    MULPOP   O_a    -0.44; H_a     0.22; H_b     0.22; 
+   1  Level shift: doubly occupied orbital energies shifted by -2.00D-01
+ -----------------------------------------------------------------------------
+   2  Screening settings (-IFTHRS, JTDIIS, DIFDEN, times)   -7    2    T  2.75D-02  2.80D-02
+@  2    -76.0305363229        3.61798D-01   -1.73D-01    2
+      Virial theorem: -V/T =      2.003426
+@    MULPOP   O_a    -0.50; H_a     0.25; H_b     0.25; 
+   2  Level shift: doubly occupied orbital energies shifted by -5.00D-02
+ -----------------------------------------------------------------------------
+   3  Screening settings (-IFTHRS, JTDIIS, DIFDEN, times)   -7    3    T  2.77D-02  2.70D-02
+@  3    -76.0405341854        1.06970D-01   -1.00D-02    3
+      Virial theorem: -V/T =      2.000405
+@    MULPOP   O_a    -0.58; H_a     0.29; H_b     0.29; 
+   3  Level shift: doubly occupied orbital energies shifted by -2.50D-02
+ -----------------------------------------------------------------------------
+   4  Screening settings (-IFTHRS, JTDIIS, DIFDEN, times)  -11    4    F  3.33D-02  3.30D-02
+@  4    -76.0416312258        5.07165D-02   -1.10D-03    4
+      Virial theorem: -V/T =      2.002308
+@    MULPOP   O_a    -0.58; H_a     0.29; H_b     0.29; 
+   4  Level shift: doubly occupied orbital energies shifted by -1.25D-02
+ -----------------------------------------------------------------------------
+   5  Screening settings (-IFTHRS, JTDIIS, DIFDEN, times)  -11    5    T  3.37D-02  3.40D-02
+@  5    -76.0417864266        1.00118D-02   -1.55D-04    5
+      Virial theorem: -V/T =      2.001457
+@    MULPOP   O_a    -0.59; H_a     0.30; H_b     0.30; 
+ -----------------------------------------------------------------------------
+   6  Screening settings (-IFTHRS, JTDIIS, DIFDEN, times)  -11    6    T  3.30D-02  3.30D-02
+@  6    -76.0418068555        2.23461D-03   -2.04D-05    6
+      Virial theorem: -V/T =      2.001512
+@    MULPOP   O_a    -0.59; H_a     0.30; H_b     0.30; 
+ -----------------------------------------------------------------------------
+   7  Screening settings (-IFTHRS, JTDIIS, DIFDEN, times)  -11    7    T  2.81D-02  2.80D-02
+@  7    -76.0418078268        3.05379D-04   -9.71D-07    7
+      Virial theorem: -V/T =      2.001533
+@    MULPOP   O_a    -0.59; H_a     0.30; H_b     0.30; 
+ -----------------------------------------------------------------------------
+   8  Screening settings (-IFTHRS, JTDIIS, DIFDEN, times)  -11    8    T  2.42D-02  2.40D-02
+@  8    -76.0418078424        4.66637D-05   -1.56D-08    8
+      Virial theorem: -V/T =      2.001534
+@    MULPOP   O_a    -0.59; H_a     0.30; H_b     0.30; 
+ -----------------------------------------------------------------------------
+   9  Screening settings (-IFTHRS, JTDIIS, DIFDEN, times)  -11    9    T  2.55D-02  2.50D-02
+@  9    -76.0418078427        8.29594D-06   -3.14D-10    8
+
+@ *** DIIS converged in   9 iterations !
+@     Converged SCF energy, gradient:    -76.041807842671    8.30D-06
+    - total time used in SIRFCK :              0.00 seconds
+
+
+ *** SCF orbital energy analysis ***
+
+ Only the 20 lowest virtual orbital energies printed in each symmetry.
+
+ Number of electrons :   10
+ Orbital occupations :    5
+
+ Sym       Hartree-Fock orbital energies
+
+1 A     -20.57726982    -1.35622268    -0.71882641    -0.58541624    -0.50912835
+          0.00745814     0.01368923     0.03477351     0.03826003     0.04396106
+          0.04999834     0.07599819     0.08432705     0.08774768     0.09644028
+          0.09888559     0.11916777     0.12354407     0.13561382     0.25127734
+          0.27877351     0.29042933     0.29596547     0.31993836     0.32441133
+
+    E(LUMO) :     0.00745814 au (symmetry 1)
+  - E(HOMO) :    -0.50912835 au (symmetry 1)
+  ------------------------------------------
+    gap     :     0.51658649 au
+
+ --- Writing SIRIFC interface file
+
+ CPU and wall time for SCF :       0.298       0.300
+
+
+                       .-----------------------------------.
+                       | --- Final results from SIRIUS --- |
+                       `-----------------------------------'
+
+
+@    Spin multiplicity:           1
+@    Spatial symmetry:            1 ( irrep  A   in C1  )
+@    Total charge of molecule:    0
+
+@    Final HF energy:             -76.041807842671                 
+@    Nuclear repulsion:             9.189533777587
+@    Electronic energy:           -85.231341620258
+
+@    Final gradient norm:           0.000008295943
+
+ 
+     Date and time (Linux)  : Thu Sep  7 17:48:51 2023
+     Host name              : sn-mem                                  
+
+File label for MO orbitals:   7Sep23   FOCKDIIS
+
+ (Only coefficients > 0.0100 are printed.)
+
+ Molecular orbitals for symmetry species 1  (A  )
+ ------------------------------------------------
+
+    Orbital         1        2        3        4        5        6        7
+   1 O_a :1s    -1.0010   0.0067   0.0000  -0.0015  -0.0000   0.0006   0.0000
+   2 O_a :1s    -0.0046  -0.8786   0.0000  -0.2988  -0.0000  -0.0405   0.0000
+   3 O_a :1s     0.0080   0.1187   0.0000  -0.1458  -0.0000  -0.0417  -0.0000
+   4 O_a :1s     0.0089  -0.1406   0.0000  -0.0230  -0.0000  -0.5653  -0.0000
+   5 O_a :1s     0.0035  -0.0360   0.0000   0.0274  -0.0000  -2.0411   0.0000
+   6 O_a :2px   -0.0000  -0.0000   0.0000  -0.0000   0.9152  -0.0000   0.0000
+   7 O_a :2py   -0.0000   0.0000  -0.7279  -0.0000   0.0000  -0.0000   0.0190
+   8 O_a :2pz    0.0024   0.1148  -0.0000  -0.7996  -0.0000   0.0358   0.0000
+   9 O_a :2px    0.0000   0.0000  -0.0000   0.0000   0.0321   0.0000  -0.0000
+  10 O_a :2py   -0.0000  -0.0000   0.1349  -0.0000  -0.0000  -0.0000   0.0235
+  11 O_a :2pz   -0.0028  -0.0715  -0.0000   0.0408   0.0000   0.0220   0.0000
+  12 O_a :2px   -0.0000  -0.0000   0.0000  -0.0000   0.0929  -0.0000   0.0000
+  13 O_a :2py   -0.0000   0.0000  -0.0965  -0.0000  -0.0000  -0.0000   0.2961
+  14 O_a :2pz   -0.0014   0.0259  -0.0000  -0.0730  -0.0000   0.1260   0.0000
+  16 O_a :2py   -0.0000  -0.0000  -0.0151   0.0000  -0.0000  -0.0000   1.2540
+  17 O_a :2pz   -0.0003   0.0043  -0.0000  -0.0103  -0.0000  -0.0474  -0.0000
+  19 O_a :3d1-   0.0000   0.0000   0.0294  -0.0000   0.0000   0.0000  -0.0010
+  20 O_a :3d0    0.0000  -0.0031   0.0000   0.0147   0.0000  -0.0006  -0.0000
+  21 O_a :3d1+   0.0000   0.0000  -0.0000   0.0000  -0.0140   0.0000  -0.0000
+  24 O_a :3d1-   0.0000   0.0000  -0.0320   0.0000   0.0000   0.0000  -0.0030
+  25 O_a :3d0   -0.0000   0.0068  -0.0000   0.0158  -0.0000  -0.0015  -0.0000
+  26 O_a :3d1+  -0.0000  -0.0000   0.0000  -0.0000  -0.0185  -0.0000   0.0000
+  27 O_a :3d2+  -0.0003  -0.0199   0.0000   0.0128   0.0000   0.0023   0.0000
+  29 O_a :3d1-   0.0000  -0.0000   0.0304   0.0000   0.0000   0.0000  -0.0479
+  30 O_a :3d0   -0.0003   0.0116  -0.0000   0.0053  -0.0000   0.0158   0.0000
+  31 O_a :3d1+  -0.0000  -0.0000   0.0000  -0.0000  -0.0121  -0.0000   0.0000
+  32 O_a :3d2+  -0.0003   0.0164  -0.0000  -0.0113   0.0000   0.0193   0.0000
+  33 H_a :1s    -0.0006  -0.3526  -0.5969   0.3618   0.0000   0.0053   0.0038
+  34 H_a :1s    -0.0052   0.2468   0.2814  -0.1565  -0.0000   0.1779  -0.1986
+  35 H_a :1s    -0.0026   0.0279   0.2446  -0.0142   0.0000   0.7844  -1.2704
+  36 H_a :1s    -0.0002   0.0012   0.0204  -0.0010   0.0000   0.8180  -6.3947
+  37 H_a :2px    0.0000   0.0000  -0.0000   0.0000   0.0268   0.0000  -0.0000
+  38 H_a :2py   -0.0003   0.0360   0.0248  -0.0301  -0.0000   0.0017   0.0007
+  39 H_a :2pz    0.0003  -0.0225  -0.0333   0.0004   0.0000  -0.0014  -0.0007
+  41 H_a :2py    0.0013   0.0006   0.0095  -0.0029  -0.0000  -0.0122   0.0176
+  42 H_a :2pz   -0.0015   0.0205  -0.0057  -0.0099   0.0000   0.0222  -0.0127
+  44 H_a :2py    0.0002   0.0017  -0.0414  -0.0044  -0.0000  -0.0841  -0.0956
+  45 H_a :2pz   -0.0001  -0.0006   0.0106   0.0096   0.0000   0.1052  -0.2817
+  46 H_b :1s    -0.0006  -0.3526   0.5969   0.3618   0.0000   0.0053  -0.0038
+  47 H_b :1s    -0.0052   0.2468  -0.2814  -0.1565  -0.0000   0.1779   0.1986
+  48 H_b :1s    -0.0026   0.0279  -0.2446  -0.0142   0.0000   0.7844   1.2704
+  49 H_b :1s    -0.0002   0.0012  -0.0204  -0.0010  -0.0000   0.8180   6.3947
+  50 H_b :2px    0.0000   0.0000  -0.0000   0.0000   0.0268   0.0000  -0.0000
+  51 H_b :2py    0.0003  -0.0360   0.0248   0.0301   0.0000  -0.0017   0.0007
+  52 H_b :2pz    0.0003  -0.0225   0.0333   0.0004   0.0000  -0.0014   0.0007
+  54 H_b :2py   -0.0013  -0.0006   0.0095   0.0029   0.0000   0.0122   0.0176
+  55 H_b :2pz   -0.0015   0.0205   0.0057  -0.0099  -0.0000   0.0222   0.0127
+  57 H_b :2py   -0.0002  -0.0017  -0.0414   0.0044   0.0000   0.0841  -0.0956
+  58 H_b :2pz   -0.0001  -0.0006  -0.0106   0.0096   0.0000   0.1052   0.2817
+
+    Orbital         8        9       10       11       12       13       14
+   2 O_a :1s     0.0571   0.0000  -0.1018  -0.0000  -0.0000  -0.0119  -0.0000
+   3 O_a :1s    -0.0608   0.0000   0.0500   0.0000   0.0000  -0.0155   0.0000
+   4 O_a :1s    -0.9971   0.0000   1.1356   0.0000  -0.0000  -0.0373   0.0000
+   5 O_a :1s    -5.2143   0.0000   4.4452   0.0000  -0.0000  -2.2621   0.0000
+   6 O_a :2px    0.0000  -0.0498  -0.0000  -0.0000  -0.0000  -0.0000   0.0000
+   7 O_a :2py    0.0000  -0.0000   0.0000  -0.0662  -0.0394   0.0000   0.0000
+   8 O_a :2pz   -0.0756   0.0000   0.0347  -0.0000  -0.0000  -0.0107  -0.0000
+  10 O_a :2py   -0.0000   0.0000   0.0000   0.0702   0.0366   0.0000  -0.0000
+  11 O_a :2pz    0.0308  -0.0000  -0.0355  -0.0000   0.0000  -0.0366   0.0000
+  12 O_a :2px    0.0000   0.0813  -0.0000  -0.0000  -0.0000  -0.0000   0.0000
+  13 O_a :2py   -0.0000   0.0000   0.0000   0.8298   0.5933  -0.0000   0.0000
+  14 O_a :2pz    0.2694   0.0000  -0.1240  -0.0000   0.0000  -0.4390  -0.0000
+  15 O_a :2px    0.0000   1.9231  -0.0000  -0.0000  -0.0000  -0.0000  -0.0000
+  16 O_a :2py    0.0000   0.0000  -0.0000   3.5432  -3.3395   0.0000   0.0000
+  17 O_a :2pz    1.6263   0.0000   1.2114  -0.0000   0.0000  -0.7251  -0.0000
+  23 O_a :3d2-  -0.0000  -0.0000  -0.0000   0.0000   0.0000  -0.0000  -0.0229
+  24 O_a :3d1-  -0.0000  -0.0000  -0.0000  -0.0103  -0.0186  -0.0000   0.0000
+  26 O_a :3d1+   0.0000   0.0119  -0.0000  -0.0000  -0.0000  -0.0000   0.0000
+  27 O_a :3d2+   0.0004  -0.0000  -0.0125  -0.0000   0.0000  -0.0125  -0.0000
+  28 O_a :3d2-   0.0000   0.0000   0.0000  -0.0000  -0.0000   0.0000   0.2150
+  29 O_a :3d1-   0.0000  -0.0000  -0.0000  -0.1340   0.0305   0.0000  -0.0000
+  30 O_a :3d0   -0.0352   0.0000  -0.0849  -0.0000  -0.0000   0.2427  -0.0000
+  31 O_a :3d1+   0.0000  -0.0705  -0.0000  -0.0000  -0.0000  -0.0000  -0.0000
+  32 O_a :3d2+   0.0555  -0.0000  -0.0489  -0.0000  -0.0000   0.1882  -0.0000
+  33 H_a :1s     0.0074  -0.0000   0.0120  -0.0229   0.0023   0.0122   0.0000
+  34 H_a :1s     0.3018   0.0000  -0.3429  -0.6046  -0.2550   0.0059  -0.0000
+  35 H_a :1s     2.1749  -0.0000  -1.4206  -5.2533 -16.5764   1.3965  -0.0000
+  36 H_a :1s     0.7486  -0.0000  -0.7246  -6.3664   1.3733   0.0281  -0.0000
+  38 H_a :2py   -0.0073   0.0000   0.0107   0.0081   0.0074   0.0024  -0.0000
+  40 H_a :2px    0.0000  -0.0134  -0.0000  -0.0000  -0.0000  -0.0000  -0.0821
+  41 H_a :2py   -0.0674   0.0000   0.0446   0.0955   0.0082   0.0957   0.0000
+  42 H_a :2pz    0.0576  -0.0000  -0.1032  -0.0591  -0.0935   0.1450  -0.0000
+  43 H_a :2px   -0.0000  -0.5722   0.0000   0.0000   0.0000   0.0000  -2.3319
+  44 H_a :2py   -0.1208   0.0000   0.5273   0.2631   5.7900   1.5645   0.0000
+  45 H_a :2pz   -0.0594  -0.0000  -0.7537  -1.1492  -1.1020   0.7538  -0.0000
+  46 H_b :1s     0.0074  -0.0000   0.0120   0.0229  -0.0023   0.0122   0.0000
+  47 H_b :1s     0.3018   0.0000  -0.3429   0.6046   0.2550   0.0059  -0.0000
+  48 H_b :1s     2.1749  -0.0000  -1.4206   5.2533  16.5764   1.3965   0.0000
+  49 H_b :1s     0.7486   0.0000  -0.7246   6.3664  -1.3733   0.0281  -0.0000
+  51 H_b :2py    0.0073  -0.0000  -0.0107   0.0081   0.0074  -0.0024   0.0000
+  53 H_b :2px    0.0000  -0.0134  -0.0000  -0.0000  -0.0000  -0.0000   0.0821
+  54 H_b :2py    0.0674  -0.0000  -0.0446   0.0955   0.0082  -0.0957  -0.0000
+  55 H_b :2pz    0.0576   0.0000  -0.1032   0.0591   0.0935   0.1450  -0.0000
+  56 H_b :2px   -0.0000  -0.5722   0.0000   0.0000   0.0000   0.0000   2.3319
+  57 H_b :2py    0.1208  -0.0000  -0.5273   0.2631   5.7900  -1.5645   0.0000
+  58 H_b :2pz   -0.0594  -0.0000  -0.7537   1.1492   1.1020   0.7538  -0.0000
+
+    Orbital        15
+   3 O_a :1s     0.1382
+   4 O_a :1s     2.1781
+   5 O_a :1s     8.0709
+   8 O_a :2pz   -0.1149
+  11 O_a :2pz   -0.0977
+  14 O_a :2pz   -1.4118
+  17 O_a :2pz   -2.5600
+  25 O_a :3d0    0.0133
+  27 O_a :3d2+   0.0113
+  30 O_a :3d0    0.1258
+  32 O_a :3d2+  -0.1359
+  34 H_a :1s    -0.9007
+  35 H_a :1s    -4.4871
+  36 H_a :1s    -0.4440
+  41 H_a :2py    0.1191
+  42 H_a :2pz    0.0454
+  44 H_a :2py   -0.4957
+  45 H_a :2pz    1.0876
+  47 H_b :1s    -0.9007
+  48 H_b :1s    -4.4871
+  49 H_b :1s    -0.4440
+  54 H_b :2py   -0.1191
+  55 H_b :2pz    0.0454
+  57 H_b :2py    0.4957
+  58 H_b :2pz    1.0876
+
+  Total CPU  time used in SIRIUS :   0.31 seconds
+  Total wall time used in SIRIUS :   0.32 seconds
+
+ 
+     Date and time (Linux)  : Thu Sep  7 17:48:51 2023
+     Host name              : sn-mem                                  
+
+
+                     .---------------------------------------.
+                     | End of Wave Function Section (SIRIUS) |
+                     `---------------------------------------'
+
+
+
+                 .------------------------------------------------.
+                 | Starting in Dynamic Property Section (RESPONS) |
+                 `------------------------------------------------'
+
+
+ ----------------------------------------------------------------------------------------
+  RESPONSE  -  an MCSCF, MC-srDFT, DFT, SOPPA and SOPPA-srDFT response property program
+ ----------------------------------------------------------------------------------------
+
+
+ -------- OUTPUT FROM RESPONSE INPUT PROCESSING --------
+
+
+
+
+ Quadratic Response calculation
+ ------------------------------
+
+ First hyperpolarizability calculation : HYPCAL= T
+
+ Spin of operator A , ISPINA=    0
+ Spin of operator B , ISPINB=    0
+ Spin of operator C , ISPINC=    0
+
+  5 B-frequencies  0.000000D+00  1.986669D-02  3.973338D-02  5.960006D-02  7.946675D-02
+  5 C-frequencies  0.000000D+00  1.986669D-02  3.973338D-02  5.960006D-02  7.946675D-02
+
+
+ Print level                                    : IPRHYP =   2
+ Maximum number of iterations in lin.rsp. solver: MAXITL =  60
+ Threshold for convergence of linear resp. eq.s : THCLR  = 1.000D-03
+ Maximum iterations in optimal orbital algorithm: MAXITO =   5
+ Direct one-index transformation                : DIROIT = T
+
+    3 A OPERATORS OF SYMMETRY NO:    1 AND LABELS:
+
+          XDIPLEN 
+          YDIPLEN 
+          ZDIPLEN 
+
+    3 B OPERATORS OF SYMMETRY NO:    1 AND LABELS:
+
+          XDIPLEN 
+          YDIPLEN 
+          ZDIPLEN 
+
+    3 C OPERATORS OF SYMMETRY NO:    1 AND LABELS:
+
+          XDIPLEN 
+          YDIPLEN 
+          ZDIPLEN 
+
+
+   SCF energy         :      -76.041807842671048
+ -- inactive part     :      -85.231341620257894
+ -- nuclear repulsion :        9.189533777586849
+
+
+                     ***************************************
+                     *** RHF response calculation (TDHF) ***
+                     ***************************************
+
+
+
+ Linear response calculations for quadratic response
+ - singlet property operator of symmetry    1  ( A  )
+
+
+ Perturbation symmetry.     KSYMOP:           1
+ Perturbation spin symmetry.TRPLET:           F
+ Orbital variables.         KZWOPT:         265
+ Configuration variables.   KZCONF:           0
+ Total number of variables. KZVAR :         265
+
+
+ QRLRVE -- linear response calculation for symmetry  1  ( A  )
+ QRLRVE -- operator label : XDIPLEN 
+ QRLRVE -- operator spin  :   0
+ QRLRVE -- frequencies :  0.000000  0.019867  0.039733  0.059600  0.079467
+                          0.099333  0.119200  0.139067  0.158934
+
+
+
+ ---  SOLVING SETS OF LINEAR EQUATIONS FOR LINEAR RESPONSE PROPERTIES ---
+
+ Operator symmetry = 1  ( A  ); triplet =   F
+
+
+ ** RSPCTL MICROITERATION NUMBER    1
+
+       No.  Residual tot.,    conf., and orb.    Bnorm      Frequency 
+      ----------------------------------------------------------------
+         1    6.89960D-01  0.00D+00  6.90D-01  2.38D+00    0.00000D+00
+         2    6.90755D-01  0.00D+00  6.91D-01  2.39D+00    1.98667D-02
+         3    6.93170D-01  0.00D+00  6.93D-01  2.41D+00    3.97334D-02
+         4    6.97295D-01  0.00D+00  6.97D-01  2.44D+00    5.96001D-02
+         5    7.03290D-01  0.00D+00  7.03D-01  2.49D+00    7.94668D-02
+         6    7.11405D-01  0.00D+00  7.11D-01  2.55D+00    9.93334D-02
+         7    7.22010D-01  0.00D+00  7.22D-01  2.64D+00    1.19200D-01
+         8    7.35644D-01  0.00D+00  7.36D-01  2.75D+00    1.39067D-01
+         9    7.53106D-01  0.00D+00  7.53D-01  2.88D+00    1.58934D-01
+
+ ** RSPCTL MICROITERATION NUMBER    2
+
+       No.  Residual tot.,    conf., and orb.    Bnorm      Frequency 
+      ----------------------------------------------------------------
+         1    4.96130D-02  0.00D+00  4.96D-02  2.47D+00    0.00000D+00
+         2    5.00549D-02  0.00D+00  5.01D-02  2.47D+00    1.98667D-02
+         3    5.13995D-02  0.00D+00  5.14D-02  2.50D+00    3.97334D-02
+         4    5.37066D-02  0.00D+00  5.37D-02  2.54D+00    5.96001D-02
+         5    5.70858D-02  0.00D+00  5.71D-02  2.60D+00    7.94668D-02
+         6    6.17143D-02  0.00D+00  6.17D-02  2.68D+00    9.93334D-02
+         7    6.78666D-02  0.00D+00  6.79D-02  2.79D+00    1.19200D-01
+         8    7.59662D-02  0.00D+00  7.60D-02  2.93D+00    1.39067D-01
+         9    8.66769D-02  0.00D+00  8.67D-02  3.11D+00    1.58934D-01
+
+ ** RSPCTL MICROITERATION NUMBER    3
+
+       No.  Residual tot.,    conf., and orb.    Bnorm      Frequency 
+      ----------------------------------------------------------------
+         1    5.12503D-03  0.00D+00  5.13D-03  2.47D+00    0.00000D+00
+         2    5.21407D-03  0.00D+00  5.21D-03  2.47D+00    1.98667D-02
+         3    5.48323D-03  0.00D+00  5.48D-03  2.50D+00    3.97334D-02
+         4    5.94006D-03  0.00D+00  5.94D-03  2.54D+00    5.96001D-02
+         5    6.60122D-03  0.00D+00  6.60D-03  2.60D+00    7.94668D-02
+         6    7.49806D-03  0.00D+00  7.50D-03  2.68D+00    9.93334D-02
+         7    8.68443D-03  0.00D+00  8.68D-03  2.79D+00    1.19200D-01
+         8    1.02491D-02  0.00D+00  1.02D-02  2.93D+00    1.39067D-01
+         9    1.23374D-02  0.00D+00  1.23D-02  3.12D+00    1.58934D-01
+
+ ** RSPCTL MICROITERATION NUMBER    4
+
+       No.  Residual tot.,    conf., and orb.    Bnorm      Frequency 
+      ----------------------------------------------------------------
+         1    5.11844D-04  0.00D+00  5.12D-04  2.47D+00    0.00000D+00
+         2    5.42333D-04  0.00D+00  5.42D-04  2.47D+00    1.98667D-02
+         3    6.29357D-04  0.00D+00  6.29D-04  2.50D+00    3.97334D-02
+         4    7.65450D-04  0.00D+00  7.65D-04  2.54D+00    5.96001D-02
+         5    9.48070D-04  0.00D+00  9.48D-04  2.60D+00    7.94668D-02
+         6    1.18203D-03  0.00D+00  1.18D-03  2.68D+00    9.93334D-02
+         7    1.47975D-03  0.00D+00  1.48D-03  2.79D+00    1.19200D-01
+         8    1.86256D-03  0.00D+00  1.86D-03  2.93D+00    1.39067D-01
+         9    2.36445D-03  0.00D+00  2.36D-03  3.12D+00    1.58934D-01
+
+ *** THE REQUESTED    9 SOLUTION VECTORS CONVERGED
+
+ Convergence of RSP solution vectors, threshold = 1.00D-03
+ ---------------------------------------------------------------
+ (dimension of paired reduced space:   72)
+ RSP solution vector no.    1; norm of residual   2.07D-04
+ RSP solution vector no.    2; norm of residual   2.19D-04
+ RSP solution vector no.    3; norm of residual   2.52D-04
+ RSP solution vector no.    4; norm of residual   3.01D-04
+ RSP solution vector no.    5; norm of residual   3.65D-04
+ RSP solution vector no.    6; norm of residual   4.41D-04
+ RSP solution vector no.    7; norm of residual   5.31D-04
+ RSP solution vector no.    8; norm of residual   6.36D-04
+ RSP solution vector no.    9; norm of residual   7.59D-04
+
+ *** RSPCTL MICROITERATIONS CONVERGED
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   XDIPLEN     FREQUENCY   0.000000D+00
+
+@ QRLRVE:  << XDIPLEN  ; XDIPLEN  >> (   0.00000):     7.94981743141    
+
+@ QRLRVE:  << YDIPLEN  ; XDIPLEN  >> (   0.00000):    4.682943076060E-16
+
+@ QRLRVE:  << ZDIPLEN  ; XDIPLEN  >> (   0.00000):   -4.233563732096E-16
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   XDIPLEN     FREQUENCY   0.198667D-01
+
+@ QRLRVE:  << XDIPLEN  ; XDIPLEN  >> (   0.01987):     7.96050244290    
+
+@ QRLRVE:  << YDIPLEN  ; XDIPLEN  >> (   0.01987):    4.703366859136E-16
+
+@ QRLRVE:  << ZDIPLEN  ; XDIPLEN  >> (   0.01987):   -4.237846068570E-16
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   XDIPLEN     FREQUENCY   0.397334D-01
+
+@ QRLRVE:  << XDIPLEN  ; XDIPLEN  >> (   0.03973):     7.99289275014    
+
+@ QRLRVE:  << YDIPLEN  ; XDIPLEN  >> (   0.03973):    4.765645989072E-16
+
+@ QRLRVE:  << ZDIPLEN  ; XDIPLEN  >> (   0.03973):   -4.250878579868E-16
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   XDIPLEN     FREQUENCY   0.596001D-01
+
+@ QRLRVE:  << XDIPLEN  ; XDIPLEN  >> (   0.05960):     8.04802925804    
+
+@ QRLRVE:  << YDIPLEN  ; XDIPLEN  >> (   0.05960):    4.872928174202E-16
+
+@ QRLRVE:  << ZDIPLEN  ; XDIPLEN  >> (   0.05960):   -4.273256286860E-16
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   XDIPLEN     FREQUENCY   0.794668D-01
+
+@ QRLRVE:  << XDIPLEN  ; XDIPLEN  >> (   0.07947):     8.12777153741    
+
+@ QRLRVE:  << YDIPLEN  ; XDIPLEN  >> (   0.07947):    5.030903426197E-16
+
+@ QRLRVE:  << ZDIPLEN  ; XDIPLEN  >> (   0.07947):   -4.306111151499E-16
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   XDIPLEN     FREQUENCY   0.993334D-01
+
+@ QRLRVE:  << XDIPLEN  ; XDIPLEN  >> (   0.09933):     8.23501510643    
+
+@ QRLRVE:  << YDIPLEN  ; XDIPLEN  >> (   0.09933):    5.248583763894E-16
+
+@ QRLRVE:  << ZDIPLEN  ; XDIPLEN  >> (   0.09933):   -4.351369249103E-16
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   XDIPLEN     FREQUENCY   0.119200D+00
+
+@ QRLRVE:  << XDIPLEN  ; XDIPLEN  >> (   0.11920):     8.37406850876    
+
+@ QRLRVE:  << YDIPLEN  ; XDIPLEN  >> (   0.11920):    5.539671009850E-16
+
+@ QRLRVE:  << ZDIPLEN  ; XDIPLEN  >> (   0.11920):   -4.412226421659E-16
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   XDIPLEN     FREQUENCY   0.139067D+00
+
+@ QRLRVE:  << XDIPLEN  ; XDIPLEN  >> (   0.13907):     8.55130037182    
+
+@ QRLRVE:  << YDIPLEN  ; XDIPLEN  >> (   0.13907):    5.924933191467E-16
+
+@ QRLRVE:  << ZDIPLEN  ; XDIPLEN  >> (   0.13907):   -4.494024420226E-16
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   XDIPLEN     FREQUENCY   0.158934D+00
+
+@ QRLRVE:  << XDIPLEN  ; XDIPLEN  >> (   0.15893):     8.77628008091    
+
+@ QRLRVE:  << YDIPLEN  ; XDIPLEN  >> (   0.15893):    6.436448240566E-16
+
+@ QRLRVE:  << ZDIPLEN  ; XDIPLEN  >> (   0.15893):   -4.605909410847E-16
+
+
+ QRLRVE -- linear response calculation for symmetry  1  ( A  )
+ QRLRVE -- operator label : YDIPLEN 
+ QRLRVE -- operator spin  :   0
+ QRLRVE -- frequencies :  0.000000  0.019867  0.039733  0.059600  0.079467
+                          0.099333  0.119200  0.139067  0.158934
+
+
+
+ ---  SOLVING SETS OF LINEAR EQUATIONS FOR LINEAR RESPONSE PROPERTIES ---
+
+ Operator symmetry = 1  ( A  ); triplet =   F
+
+RSPORT:    1 out of    9 new trial vectors linear dependent
+
+ ** RSPCTL MICROITERATION NUMBER    1
+
+       No.  Residual tot.,    conf., and orb.    Bnorm      Frequency 
+      ----------------------------------------------------------------
+         1    8.61640D-01  0.00D+00  8.62D-01  2.34D+00    0.00000D+00
+         2    8.62263D-01  0.00D+00  8.62D-01  2.34D+00    1.98667D-02
+         3    8.64140D-01  0.00D+00  8.64D-01  2.35D+00    3.97334D-02
+         4    8.67296D-01  0.00D+00  8.67D-01  2.37D+00    5.96001D-02
+         5    8.71772D-01  0.00D+00  8.72D-01  2.40D+00    7.94668D-02
+         6    8.77631D-01  0.00D+00  8.78D-01  2.44D+00    9.93334D-02
+         7    8.84953D-01  0.00D+00  8.85D-01  2.48D+00    1.19200D-01
+         8    8.93848D-01  0.00D+00  8.94D-01  2.54D+00    1.39067D-01
+         9    9.04453D-01  0.00D+00  9.04D-01  2.61D+00    1.58934D-01
+
+ ** RSPCTL MICROITERATION NUMBER    2
+
+       No.  Residual tot.,    conf., and orb.    Bnorm      Frequency 
+      ----------------------------------------------------------------
+         1    7.22755D-02  0.00D+00  7.23D-02  2.42D+00    0.00000D+00
+         2    7.24782D-02  0.00D+00  7.25D-02  2.43D+00    1.98667D-02
+         3    7.30904D-02  0.00D+00  7.31D-02  2.44D+00    3.97334D-02
+         4    7.41251D-02  0.00D+00  7.41D-02  2.46D+00    5.96001D-02
+         5    7.56046D-02  0.00D+00  7.56D-02  2.49D+00    7.94668D-02
+         6    7.75618D-02  0.00D+00  7.76D-02  2.53D+00    9.93334D-02
+         7    8.00418D-02  0.00D+00  8.00D-02  2.58D+00    1.19200D-01
+         8    8.31049D-02  0.00D+00  8.31D-02  2.64D+00    1.39067D-01
+         9    8.68298D-02  0.00D+00  8.68D-02  2.71D+00    1.58934D-01
+
+ ** RSPCTL MICROITERATION NUMBER    3
+
+       No.  Residual tot.,    conf., and orb.    Bnorm      Frequency 
+      ----------------------------------------------------------------
+         1    1.17112D-02  0.00D+00  1.17D-02  2.42D+00    0.00000D+00
+         2    1.17550D-02  0.00D+00  1.18D-02  2.43D+00    1.98667D-02
+         3    1.18873D-02  0.00D+00  1.19D-02  2.44D+00    3.97334D-02
+         4    1.21108D-02  0.00D+00  1.21D-02  2.46D+00    5.96001D-02
+         5    1.24300D-02  0.00D+00  1.24D-02  2.49D+00    7.94668D-02
+         6    1.28518D-02  0.00D+00  1.29D-02  2.53D+00    9.93334D-02
+         7    1.33854D-02  0.00D+00  1.34D-02  2.58D+00    1.19200D-01
+         8    1.40432D-02  0.00D+00  1.40D-02  2.64D+00    1.39067D-01
+         9    1.48412D-02  0.00D+00  1.48D-02  2.72D+00    1.58934D-01
+
+ ** RSPCTL MICROITERATION NUMBER    4
+
+       No.  Residual tot.,    conf., and orb.    Bnorm      Frequency 
+      ----------------------------------------------------------------
+         1    1.12060D-03  0.00D+00  1.12D-03  2.42D+00    0.00000D+00
+         2    1.12693D-03  0.00D+00  1.13D-03  2.43D+00    1.98667D-02
+         3    1.14611D-03  0.00D+00  1.15D-03  2.44D+00    3.97334D-02
+         4    1.17859D-03  0.00D+00  1.18D-03  2.46D+00    5.96001D-02
+         5    1.22523D-03  0.00D+00  1.23D-03  2.49D+00    7.94668D-02
+         6    1.28723D-03  0.00D+00  1.29D-03  2.53D+00    9.93334D-02
+         7    1.36629D-03  0.00D+00  1.37D-03  2.58D+00    1.19200D-01
+         8    1.46464D-03  0.00D+00  1.46D-03  2.64D+00    1.39067D-01
+         9    1.58523D-03  0.00D+00  1.59D-03  2.72D+00    1.58934D-01
+
+ *** THE REQUESTED    9 SOLUTION VECTORS CONVERGED
+
+ Convergence of RSP solution vectors, threshold = 1.00D-03
+ ---------------------------------------------------------------
+ (dimension of paired reduced space:   70)
+ RSP solution vector no.    1; norm of residual   4.63D-04
+ RSP solution vector no.    2; norm of residual   4.65D-04
+ RSP solution vector no.    3; norm of residual   4.70D-04
+ RSP solution vector no.    4; norm of residual   4.79D-04
+ RSP solution vector no.    5; norm of residual   4.92D-04
+ RSP solution vector no.    6; norm of residual   5.09D-04
+ RSP solution vector no.    7; norm of residual   5.29D-04
+ RSP solution vector no.    8; norm of residual   5.54D-04
+ RSP solution vector no.    9; norm of residual   5.84D-04
+
+ *** RSPCTL MICROITERATIONS CONVERGED
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   YDIPLEN     FREQUENCY   0.000000D+00
+
+@ QRLRVE:  << XDIPLEN  ; YDIPLEN  >> (   0.00000):   -1.206879050052E-15
+
+@ QRLRVE:  << YDIPLEN  ; YDIPLEN  >> (   0.00000):     9.14948723855    
+
+@ QRLRVE:  << ZDIPLEN  ; YDIPLEN  >> (   0.00000):   -8.242679765728E-05
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   YDIPLEN     FREQUENCY   0.198667D-01
+
+@ QRLRVE:  << XDIPLEN  ; YDIPLEN  >> (   0.01987):   -1.215191325306E-15
+
+@ QRLRVE:  << YDIPLEN  ; YDIPLEN  >> (   0.01987):     9.15775538955    
+
+@ QRLRVE:  << ZDIPLEN  ; YDIPLEN  >> (   0.01987):   -8.243133909119E-05
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   YDIPLEN     FREQUENCY   0.397334D-01
+
+@ QRLRVE:  << XDIPLEN  ; YDIPLEN  >> (   0.03973):   -1.240451112191E-15
+
+@ QRLRVE:  << YDIPLEN  ; YDIPLEN  >> (   0.03973):     9.18267654817    
+
+@ QRLRVE:  << ZDIPLEN  ; YDIPLEN  >> (   0.03973):   -8.243752100913E-05
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   YDIPLEN     FREQUENCY   0.596001D-01
+
+@ QRLRVE:  << XDIPLEN  ; YDIPLEN  >> (   0.05960):   -1.283647793866E-15
+
+@ QRLRVE:  << YDIPLEN  ; YDIPLEN  >> (   0.05960):     9.22460554000    
+
+@ QRLRVE:  << ZDIPLEN  ; YDIPLEN  >> (   0.05960):   -8.242233975017E-05
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   YDIPLEN     FREQUENCY   0.794668D-01
+
+@ QRLRVE:  << XDIPLEN  ; YDIPLEN  >> (   0.07947):   -1.346500123542E-15
+
+@ QRLRVE:  << YDIPLEN  ; YDIPLEN  >> (   0.07947):     9.28414982415    
+
+@ QRLRVE:  << ZDIPLEN  ; YDIPLEN  >> (   0.07947):   -8.234512929003E-05
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   YDIPLEN     FREQUENCY   0.993334D-01
+
+@ QRLRVE:  << XDIPLEN  ; YDIPLEN  >> (   0.09933):   -1.431565886008E-15
+
+@ QRLRVE:  << YDIPLEN  ; YDIPLEN  >> (   0.09933):     9.36219502927    
+
+@ QRLRVE:  << ZDIPLEN  ; YDIPLEN  >> (   0.09933):   -8.214381221356E-05
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   YDIPLEN     FREQUENCY   0.119200D+00
+
+@ QRLRVE:  << XDIPLEN  ; YDIPLEN  >> (   0.11920):   -1.542404950287E-15
+
+@ QRLRVE:  << YDIPLEN  ; YDIPLEN  >> (   0.11920):     9.45994373618    
+
+@ QRLRVE:  << ZDIPLEN  ; YDIPLEN  >> (   0.11920):   -8.172910082120E-05
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   YDIPLEN     FREQUENCY   0.139067D+00
+
+@ QRLRVE:  << XDIPLEN  ; YDIPLEN  >> (   0.13907):   -1.683803454686E-15
+
+@ QRLRVE:  << YDIPLEN  ; YDIPLEN  >> (   0.13907):     9.57897107776    
+
+@ QRLRVE:  << ZDIPLEN  ; YDIPLEN  >> (   0.13907):   -8.097602128162E-05
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   YDIPLEN     FREQUENCY   0.158934D+00
+
+@ QRLRVE:  << XDIPLEN  ; YDIPLEN  >> (   0.15893):   -1.862064050308E-15
+
+@ QRLRVE:  << YDIPLEN  ; YDIPLEN  >> (   0.15893):     9.72130265610    
+
+@ QRLRVE:  << ZDIPLEN  ; YDIPLEN  >> (   0.15893):   -7.971184105970E-05
+
+
+ QRLRVE -- linear response calculation for symmetry  1  ( A  )
+ QRLRVE -- operator label : ZDIPLEN 
+ QRLRVE -- operator spin  :   0
+ QRLRVE -- frequencies :  0.000000  0.019867  0.039733  0.059600  0.079467
+                          0.099333  0.119200  0.139067  0.158934
+
+
+
+ ---  SOLVING SETS OF LINEAR EQUATIONS FOR LINEAR RESPONSE PROPERTIES ---
+
+ Operator symmetry = 1  ( A  ); triplet =   F
+
+
+ ** RSPCTL MICROITERATION NUMBER    1
+
+       No.  Residual tot.,    conf., and orb.    Bnorm      Frequency 
+      ----------------------------------------------------------------
+         1    1.43064D+00  0.00D+00  1.43D+00  2.22D+00    0.00000D+00
+         2    1.43199D+00  0.00D+00  1.43D+00  2.23D+00    1.98667D-02
+         3    1.43609D+00  0.00D+00  1.44D+00  2.24D+00    3.97334D-02
+         4    1.44298D+00  0.00D+00  1.44D+00  2.26D+00    5.96001D-02
+         5    1.45282D+00  0.00D+00  1.45D+00  2.30D+00    7.94668D-02
+         6    1.46578D+00  0.00D+00  1.47D+00  2.34D+00    9.93334D-02
+         7    1.48213D+00  0.00D+00  1.48D+00  2.40D+00    1.19200D-01
+         8    1.50222D+00  0.00D+00  1.50D+00  2.46D+00    1.39067D-01
+         9    1.52651D+00  0.00D+00  1.53D+00  2.55D+00    1.58934D-01
+
+ ** RSPCTL MICROITERATION NUMBER    2
+
+       No.  Residual tot.,    conf., and orb.    Bnorm      Frequency 
+      ----------------------------------------------------------------
+         1    2.97880D-01  0.00D+00  2.98D-01  2.40D+00    0.00000D+00
+         2    2.98420D-01  0.00D+00  2.98D-01  2.40D+00    1.98667D-02
+         3    3.00052D-01  0.00D+00  3.00D-01  2.42D+00    3.97334D-02
+         4    3.02818D-01  0.00D+00  3.03D-01  2.45D+00    5.96001D-02
+         5    3.06794D-01  0.00D+00  3.07D-01  2.49D+00    7.94668D-02
+         6    3.12089D-01  0.00D+00  3.12D-01  2.54D+00    9.93334D-02
+         7    3.18862D-01  0.00D+00  3.19D-01  2.61D+00    1.19200D-01
+         8    3.27331D-01  0.00D+00  3.27D-01  2.69D+00    1.39067D-01
+         9    3.37798D-01  0.00D+00  3.38D-01  2.79D+00    1.58934D-01
+
+ ** RSPCTL MICROITERATION NUMBER    3
+
+       No.  Residual tot.,    conf., and orb.    Bnorm      Frequency 
+      ----------------------------------------------------------------
+         1    2.48532D-02  0.00D+00  2.49D-02  2.41D+00    0.00000D+00
+         2    2.49269D-02  0.00D+00  2.49D-02  2.42D+00    1.98667D-02
+         3    2.51502D-02  0.00D+00  2.52D-02  2.43D+00    3.97334D-02
+         4    2.55301D-02  0.00D+00  2.55D-02  2.46D+00    5.96001D-02
+         5    2.60791D-02  0.00D+00  2.61D-02  2.50D+00    7.94668D-02
+         6    2.68161D-02  0.00D+00  2.68D-02  2.55D+00    9.93334D-02
+         7    2.77679D-02  0.00D+00  2.78D-02  2.62D+00    1.19200D-01
+         8    2.89722D-02  0.00D+00  2.90D-02  2.71D+00    1.39067D-01
+         9    3.04818D-02  0.00D+00  3.05D-02  2.81D+00    1.58934D-01
+
+ ** RSPCTL MICROITERATION NUMBER    4
+
+       No.  Residual tot.,    conf., and orb.    Bnorm      Frequency 
+      ----------------------------------------------------------------
+         1    2.75752D-03  0.00D+00  2.76D-03  2.41D+00    0.00000D+00
+         2    2.76977D-03  0.00D+00  2.77D-03  2.42D+00    1.98667D-02
+         3    2.80711D-03  0.00D+00  2.81D-03  2.43D+00    3.97334D-02
+         4    2.87137D-03  0.00D+00  2.87D-03  2.46D+00    5.96001D-02
+         5    2.96580D-03  0.00D+00  2.97D-03  2.50D+00    7.94668D-02
+         6    3.09537D-03  0.00D+00  3.10D-03  2.55D+00    9.93334D-02
+         7    3.26734D-03  0.00D+00  3.27D-03  2.62D+00    1.19200D-01
+         8    3.49205D-03  0.00D+00  3.49D-03  2.71D+00    1.39067D-01
+         9    3.78420D-03  0.00D+00  3.78D-03  2.81D+00    1.58934D-01
+
+ ** RSPCTL MICROITERATION NUMBER    5
+
+       No.  Residual tot.,    conf., and orb.    Bnorm      Frequency 
+      ----------------------------------------------------------------
+         1    3.21551D-04  0.00D+00  3.22D-04  2.41D+00    0.00000D+00
+         2    3.22922D-04  0.00D+00  3.23D-04  2.42D+00    1.98667D-02
+         3    3.27087D-04  0.00D+00  3.27D-04  2.43D+00    3.97334D-02
+         4    3.34210D-04  0.00D+00  3.34D-04  2.46D+00    5.96001D-02
+         5    3.44579D-04  0.00D+00  3.45D-04  2.50D+00    7.94668D-02
+         6    3.58635D-04  0.00D+00  3.59D-04  2.55D+00    9.93334D-02
+         7    3.77016D-04  0.00D+00  3.77D-04  2.62D+00    1.19200D-01
+         8    4.00628D-04  0.00D+00  4.01D-04  2.71D+00    1.39067D-01
+         9    4.30761D-04  0.00D+00  4.31D-04  2.81D+00    1.58934D-01
+
+ *** THE REQUESTED    9 SOLUTION VECTORS CONVERGED
+
+ Convergence of RSP solution vectors, threshold = 1.00D-03
+ ---------------------------------------------------------------
+ (dimension of paired reduced space:   90)
+ RSP solution vector no.    1; norm of residual   1.33D-04
+ RSP solution vector no.    2; norm of residual   1.34D-04
+ RSP solution vector no.    3; norm of residual   1.34D-04
+ RSP solution vector no.    4; norm of residual   1.36D-04
+ RSP solution vector no.    5; norm of residual   1.38D-04
+ RSP solution vector no.    6; norm of residual   1.40D-04
+ RSP solution vector no.    7; norm of residual   1.44D-04
+ RSP solution vector no.    8; norm of residual   1.48D-04
+ RSP solution vector no.    9; norm of residual   1.53D-04
+
+ *** RSPCTL MICROITERATIONS CONVERGED
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   ZDIPLEN     FREQUENCY   0.000000D+00
+
+@ QRLRVE:  << XDIPLEN  ; ZDIPLEN  >> (   0.00000):    4.663624753900E-15
+
+@ QRLRVE:  << YDIPLEN  ; ZDIPLEN  >> (   0.00000):    8.793065221513E-05
+
+@ QRLRVE:  << ZDIPLEN  ; ZDIPLEN  >> (   0.00000):     8.46604998056    
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   ZDIPLEN     FREQUENCY   0.198667D-01
+
+@ QRLRVE:  << XDIPLEN  ; ZDIPLEN  >> (   0.01987):    4.731997885213E-15
+
+@ QRLRVE:  << YDIPLEN  ; ZDIPLEN  >> (   0.01987):    8.843244075493E-05
+
+@ QRLRVE:  << ZDIPLEN  ; ZDIPLEN  >> (   0.01987):     8.47512747406    
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   ZDIPLEN     FREQUENCY   0.397334D-01
+
+@ QRLRVE:  << XDIPLEN  ; ZDIPLEN  >> (   0.03973):    4.942316086089E-15
+
+@ QRLRVE:  << YDIPLEN  ; ZDIPLEN  >> (   0.03973):    8.996200784133E-05
+
+@ QRLRVE:  << ZDIPLEN  ; ZDIPLEN  >> (   0.03973):     8.50254281403    
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   ZDIPLEN     FREQUENCY   0.596001D-01
+
+@ QRLRVE:  << XDIPLEN  ; ZDIPLEN  >> (   0.05960):    5.310830916501E-15
+
+@ QRLRVE:  << YDIPLEN  ; ZDIPLEN  >> (   0.05960):    9.259419903307E-05
+
+@ QRLRVE:  << ZDIPLEN  ; ZDIPLEN  >> (   0.05960):     8.54885598406    
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   ZDIPLEN     FREQUENCY   0.794668D-01
+
+@ QRLRVE:  << XDIPLEN  ; ZDIPLEN  >> (   0.07947):    5.866936640751E-15
+
+@ QRLRVE:  << YDIPLEN  ; ZDIPLEN  >> (   0.07947):    9.646156531446E-05
+
+@ QRLRVE:  << ZDIPLEN  ; ZDIPLEN  >> (   0.07947):     8.61503979004    
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   ZDIPLEN     FREQUENCY   0.993334D-01
+
+@ QRLRVE:  << XDIPLEN  ; ZDIPLEN  >> (   0.09933):    6.657102513476E-15
+
+@ QRLRVE:  << YDIPLEN  ; ZDIPLEN  >> (   0.09933):    1.017673356189E-04
+
+@ QRLRVE:  << ZDIPLEN  ; ZDIPLEN  >> (   0.09933):     8.70254463050    
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   ZDIPLEN     FREQUENCY   0.119200D+00
+
+@ QRLRVE:  << XDIPLEN  ; ZDIPLEN  >> (   0.11920):    7.751452389324E-15
+
+@ QRLRVE:  << YDIPLEN  ; ZDIPLEN  >> (   0.11920):    1.088064028638E-04
+
+@ QRLRVE:  << ZDIPLEN  ; ZDIPLEN  >> (   0.11920):     8.81340152151    
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   ZDIPLEN     FREQUENCY   0.139067D+00
+
+@ QRLRVE:  << XDIPLEN  ; ZDIPLEN  >> (   0.13907):    9.254433655689E-15
+
+@ QRLRVE:  << YDIPLEN  ; ZDIPLEN  >> (   0.13907):    1.179979658927E-04
+
+@ QRLRVE:  << ZDIPLEN  ; ZDIPLEN  >> (   0.13907):     8.95037924292    
+
+@ QRLRVE: SINGLET SOLUTION FOR SYMMETRY    1  ( A  )    LABEL   ZDIPLEN     FREQUENCY   0.158934D+00
+
+@ QRLRVE:  << XDIPLEN  ; ZDIPLEN  >> (   0.15893):    1.132211866656E-14
+
+@ QRLRVE:  << YDIPLEN  ; ZDIPLEN  >> (   0.15893):    1.299360078559E-04
+
+@ QRLRVE:  << ZDIPLEN  ; ZDIPLEN  >> (   0.15893):     9.11722250357    
+ 
+ ======================================================================
+ ---  L I N E A R   R E S P O N S E   F U N C T I O N S --- 
+ ======================================================================
+
+ The -<<A;B>>(omega_b) functions from vectors generated
+ in a *QUADRA calculation of <<A;B,C>>(omega_b,omega_c)
+
+ Note: the accuracy of off-diagonal elements will be linear
+ in the convergence threshold THCLR =  1.00D-03
+
+
+ Perturbation symmetry.     KSYMOP:           1
+ Perturbation spin symmetry.TRPLET:           F
+ Orbital variables.         KZWOPT:         265
+ Configuration variables.   KZCONF:           0
+ Total number of variables. KZVAR :         265
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   XDIPLEN    1 -0.000000
+@ B operator, symmetry, frequency:   XDIPLEN    1  0.000000
+
+@ Value of linear response -<<A;B>>(omega):       7.949817431411
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   YDIPLEN    1 -0.000000
+@ B operator, symmetry, frequency:   XDIPLEN    1  0.000000
+
+@ Value of linear response -<<A;B>>(omega):       0.000000000000
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   ZDIPLEN    1 -0.000000
+@ B operator, symmetry, frequency:   XDIPLEN    1  0.000000
+
+@ Value of linear response -<<A;B>>(omega):      -0.000000000000
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   XDIPLEN    1 -0.019867
+@ B operator, symmetry, frequency:   XDIPLEN    1  0.019867
+
+@ Value of linear response -<<A;B>>(omega):       7.960502442903
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   YDIPLEN    1 -0.019867
+@ B operator, symmetry, frequency:   XDIPLEN    1  0.019867
+
+@ Value of linear response -<<A;B>>(omega):       0.000000000000
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   ZDIPLEN    1 -0.019867
+@ B operator, symmetry, frequency:   XDIPLEN    1  0.019867
+
+@ Value of linear response -<<A;B>>(omega):      -0.000000000000
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   XDIPLEN    1 -0.039733
+@ B operator, symmetry, frequency:   XDIPLEN    1  0.039733
+
+@ Value of linear response -<<A;B>>(omega):       7.992892750137
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   YDIPLEN    1 -0.039733
+@ B operator, symmetry, frequency:   XDIPLEN    1  0.039733
+
+@ Value of linear response -<<A;B>>(omega):       0.000000000000
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   ZDIPLEN    1 -0.039733
+@ B operator, symmetry, frequency:   XDIPLEN    1  0.039733
+
+@ Value of linear response -<<A;B>>(omega):      -0.000000000000
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   XDIPLEN    1 -0.059600
+@ B operator, symmetry, frequency:   XDIPLEN    1  0.059600
+
+@ Value of linear response -<<A;B>>(omega):       8.048029258041
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   YDIPLEN    1 -0.059600
+@ B operator, symmetry, frequency:   XDIPLEN    1  0.059600
+
+@ Value of linear response -<<A;B>>(omega):       0.000000000000
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   ZDIPLEN    1 -0.059600
+@ B operator, symmetry, frequency:   XDIPLEN    1  0.059600
+
+@ Value of linear response -<<A;B>>(omega):      -0.000000000000
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   XDIPLEN    1 -0.079467
+@ B operator, symmetry, frequency:   XDIPLEN    1  0.079467
+
+@ Value of linear response -<<A;B>>(omega):       8.127771537415
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   YDIPLEN    1 -0.079467
+@ B operator, symmetry, frequency:   XDIPLEN    1  0.079467
+
+@ Value of linear response -<<A;B>>(omega):       0.000000000000
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   ZDIPLEN    1 -0.079467
+@ B operator, symmetry, frequency:   XDIPLEN    1  0.079467
+
+@ Value of linear response -<<A;B>>(omega):      -0.000000000000
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   XDIPLEN    1 -0.000000
+@ B operator, symmetry, frequency:   YDIPLEN    1  0.000000
+
+@ Value of linear response -<<A;B>>(omega):      -0.000000000000
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   YDIPLEN    1 -0.000000
+@ B operator, symmetry, frequency:   YDIPLEN    1  0.000000
+
+@ Value of linear response -<<A;B>>(omega):       9.149487238547
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   ZDIPLEN    1 -0.000000
+@ B operator, symmetry, frequency:   YDIPLEN    1  0.000000
+
+@ Value of linear response -<<A;B>>(omega):      -0.000082426798
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   XDIPLEN    1 -0.019867
+@ B operator, symmetry, frequency:   YDIPLEN    1  0.019867
+
+@ Value of linear response -<<A;B>>(omega):      -0.000000000000
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   YDIPLEN    1 -0.019867
+@ B operator, symmetry, frequency:   YDIPLEN    1  0.019867
+
+@ Value of linear response -<<A;B>>(omega):       9.157755389546
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   ZDIPLEN    1 -0.019867
+@ B operator, symmetry, frequency:   YDIPLEN    1  0.019867
+
+@ Value of linear response -<<A;B>>(omega):      -0.000082431339
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   XDIPLEN    1 -0.039733
+@ B operator, symmetry, frequency:   YDIPLEN    1  0.039733
+
+@ Value of linear response -<<A;B>>(omega):      -0.000000000000
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   YDIPLEN    1 -0.039733
+@ B operator, symmetry, frequency:   YDIPLEN    1  0.039733
+
+@ Value of linear response -<<A;B>>(omega):       9.182676548170
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   ZDIPLEN    1 -0.039733
+@ B operator, symmetry, frequency:   YDIPLEN    1  0.039733
+
+@ Value of linear response -<<A;B>>(omega):      -0.000082437521
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   XDIPLEN    1 -0.059600
+@ B operator, symmetry, frequency:   YDIPLEN    1  0.059600
+
+@ Value of linear response -<<A;B>>(omega):      -0.000000000000
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   YDIPLEN    1 -0.059600
+@ B operator, symmetry, frequency:   YDIPLEN    1  0.059600
+
+@ Value of linear response -<<A;B>>(omega):       9.224605539995
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   ZDIPLEN    1 -0.059600
+@ B operator, symmetry, frequency:   YDIPLEN    1  0.059600
+
+@ Value of linear response -<<A;B>>(omega):      -0.000082422340
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   XDIPLEN    1 -0.079467
+@ B operator, symmetry, frequency:   YDIPLEN    1  0.079467
+
+@ Value of linear response -<<A;B>>(omega):      -0.000000000000
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   YDIPLEN    1 -0.079467
+@ B operator, symmetry, frequency:   YDIPLEN    1  0.079467
+
+@ Value of linear response -<<A;B>>(omega):       9.284149824149
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   ZDIPLEN    1 -0.079467
+@ B operator, symmetry, frequency:   YDIPLEN    1  0.079467
+
+@ Value of linear response -<<A;B>>(omega):      -0.000082345129
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   XDIPLEN    1 -0.000000
+@ B operator, symmetry, frequency:   ZDIPLEN    1  0.000000
+
+@ Value of linear response -<<A;B>>(omega):       0.000000000000
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   YDIPLEN    1 -0.000000
+@ B operator, symmetry, frequency:   ZDIPLEN    1  0.000000
+
+@ Value of linear response -<<A;B>>(omega):       0.000087930652
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   ZDIPLEN    1 -0.000000
+@ B operator, symmetry, frequency:   ZDIPLEN    1  0.000000
+
+@ Value of linear response -<<A;B>>(omega):       8.466049980560
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   XDIPLEN    1 -0.019867
+@ B operator, symmetry, frequency:   ZDIPLEN    1  0.019867
+
+@ Value of linear response -<<A;B>>(omega):       0.000000000000
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   YDIPLEN    1 -0.019867
+@ B operator, symmetry, frequency:   ZDIPLEN    1  0.019867
+
+@ Value of linear response -<<A;B>>(omega):       0.000088432441
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   ZDIPLEN    1 -0.019867
+@ B operator, symmetry, frequency:   ZDIPLEN    1  0.019867
+
+@ Value of linear response -<<A;B>>(omega):       8.475127474058
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   XDIPLEN    1 -0.039733
+@ B operator, symmetry, frequency:   ZDIPLEN    1  0.039733
+
+@ Value of linear response -<<A;B>>(omega):       0.000000000000
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   YDIPLEN    1 -0.039733
+@ B operator, symmetry, frequency:   ZDIPLEN    1  0.039733
+
+@ Value of linear response -<<A;B>>(omega):       0.000089962008
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   ZDIPLEN    1 -0.039733
+@ B operator, symmetry, frequency:   ZDIPLEN    1  0.039733
+
+@ Value of linear response -<<A;B>>(omega):       8.502542814028
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   XDIPLEN    1 -0.059600
+@ B operator, symmetry, frequency:   ZDIPLEN    1  0.059600
+
+@ Value of linear response -<<A;B>>(omega):       0.000000000000
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   YDIPLEN    1 -0.059600
+@ B operator, symmetry, frequency:   ZDIPLEN    1  0.059600
+
+@ Value of linear response -<<A;B>>(omega):       0.000092594199
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   ZDIPLEN    1 -0.059600
+@ B operator, symmetry, frequency:   ZDIPLEN    1  0.059600
+
+@ Value of linear response -<<A;B>>(omega):       8.548855984061
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   XDIPLEN    1 -0.079467
+@ B operator, symmetry, frequency:   ZDIPLEN    1  0.079467
+
+@ Value of linear response -<<A;B>>(omega):       0.000000000000
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   YDIPLEN    1 -0.079467
+@ B operator, symmetry, frequency:   ZDIPLEN    1  0.079467
+
+@ Value of linear response -<<A;B>>(omega):       0.000096461565
+
+@ Singlet linear response function in a.u.
+
+@ A operator, symmetry, frequency:   ZDIPLEN    1 -0.079467
+@ B operator, symmetry, frequency:   ZDIPLEN    1  0.079467
+
+@ Value of linear response -<<A;B>>(omega):       8.615039790043
+
+
+  Results from quadratic response calculation
+ --------------------------------------------
+
+@ B-freq = 0.000000  C-freq = 0.000000     beta(X;X,X) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Y;X,X) =     -0.00115984
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Z;X,X) =      0.38492522
+@ B-freq = 0.019867  C-freq = 0.000000     beta(X;X,X) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.000000     beta(Y;X,X) =     -0.00116733
+@ B-freq = 0.019867  C-freq = 0.000000     beta(Z;X,X) =      0.39012904
+@ B-freq = 0.039733  C-freq = 0.000000     beta(X;X,X) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.000000     beta(Y;X,X) =     -0.00118961
+@ B-freq = 0.039733  C-freq = 0.000000     beta(Z;X,X) =      0.40613105
+@ B-freq = 0.059600  C-freq = 0.000000     beta(X;X,X) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.000000     beta(Y;X,X) =     -0.00122596
+@ B-freq = 0.059600  C-freq = 0.000000     beta(Z;X,X) =      0.43416144
+@ B-freq = 0.079467  C-freq = 0.000000     beta(X;X,X) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.000000     beta(Y;X,X) =     -0.00127477
+@ B-freq = 0.079467  C-freq = 0.000000     beta(Z;X,X) =      0.47648073
+@ B-freq = 0.000000  C-freq = 0.000000     beta(X;Y,X) = beta(Y,X,X)
+@ B-freq = 0.000000  C-freq = 0.000000     beta(X;Y,X) =     -0.00115984
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.000000     beta(X;Y,X) =     -0.00116733
+@ B-freq = 0.019867  C-freq = 0.000000     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.000000     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.000000     beta(X;Y,X) =     -0.00118961
+@ B-freq = 0.039733  C-freq = 0.000000     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.000000     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.000000     beta(X;Y,X) =     -0.00122596
+@ B-freq = 0.059600  C-freq = 0.000000     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.000000     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.000000     beta(X;Y,X) =     -0.00127477
+@ B-freq = 0.079467  C-freq = 0.000000     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.000000     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.000000     beta(X;Z,X) = beta(Z,X,X)
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Y;Z,X) = beta(Z,Y,X)
+@ B-freq = 0.000000  C-freq = 0.000000     beta(X;Z,X) =      0.38492537
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.019867  C-freq = 0.000000     beta(X;Z,X) =      0.39012919
+@ B-freq = 0.019867  C-freq = 0.000000     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.000000     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.039733  C-freq = 0.000000     beta(X;Z,X) =      0.40613121
+@ B-freq = 0.039733  C-freq = 0.000000     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.000000     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.059600  C-freq = 0.000000     beta(X;Z,X) =      0.43416160
+@ B-freq = 0.059600  C-freq = 0.000000     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.000000     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.079467  C-freq = 0.000000     beta(X;Z,X) =      0.47648088
+@ B-freq = 0.079467  C-freq = 0.000000     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.000000     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.000000  C-freq = 0.019867     beta(X;X,X) = beta(X,X,X)
+@ B-freq = 0.000000  C-freq = 0.019867     beta(Y;X,X) = beta(Y,X,X)
+@ B-freq = 0.000000  C-freq = 0.019867     beta(Z;X,X) = beta(Z,X,X)
+@ B-freq = 0.019867  C-freq = 0.019867     beta(X;X,X) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.019867     beta(Y;X,X) =     -0.00118729
+@ B-freq = 0.019867  C-freq = 0.019867     beta(Z;X,X) =      0.38602669
+@ B-freq = 0.039733  C-freq = 0.019867     beta(X;X,X) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.019867     beta(Y;X,X) =     -0.00122157
+@ B-freq = 0.039733  C-freq = 0.019867     beta(Z;X,X) =      0.39211165
+@ B-freq = 0.059600  C-freq = 0.019867     beta(X;X,X) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.019867     beta(Y;X,X) =     -0.00126905
+@ B-freq = 0.059600  C-freq = 0.019867     beta(Z;X,X) =      0.40898505
+@ B-freq = 0.079467  C-freq = 0.019867     beta(X;X,X) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.019867     beta(Y;X,X) =     -0.00132732
+@ B-freq = 0.079467  C-freq = 0.019867     beta(Z;X,X) =      0.43809681
+@ B-freq = 0.000000  C-freq = 0.019867     beta(X;Y,X) =     -0.00116212
+@ B-freq = 0.000000  C-freq = 0.019867     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.019867     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.019867     beta(X;Y,X) =     -0.00117158
+@ B-freq = 0.019867  C-freq = 0.019867     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.019867     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.019867     beta(X;Y,X) =     -0.00119517
+@ B-freq = 0.039733  C-freq = 0.019867     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.019867     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.019867     beta(X;Y,X) =     -0.00123158
+@ B-freq = 0.059600  C-freq = 0.019867     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.019867     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.019867     beta(X;Y,X) =     -0.00127815
+@ B-freq = 0.079467  C-freq = 0.019867     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.019867     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.019867     beta(X;Z,X) =      0.40456939
+@ B-freq = 0.000000  C-freq = 0.019867     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.019867     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.019867  C-freq = 0.019867     beta(X;Z,X) =      0.43026275
+@ B-freq = 0.019867  C-freq = 0.019867     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.019867     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.039733  C-freq = 0.019867     beta(X;Z,X) =      0.46901515
+@ B-freq = 0.039733  C-freq = 0.019867     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.019867     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.059600  C-freq = 0.019867     beta(X;Z,X) =      0.52379240
+@ B-freq = 0.059600  C-freq = 0.019867     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.019867     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.079467  C-freq = 0.019867     beta(X;Z,X) =      0.59920561
+@ B-freq = 0.079467  C-freq = 0.019867     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.019867     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.000000  C-freq = 0.039733     beta(X;X,X) = beta(X,X,X)
+@ B-freq = 0.000000  C-freq = 0.039733     beta(Y;X,X) = beta(Y,X,X)
+@ B-freq = 0.000000  C-freq = 0.039733     beta(Z;X,X) = beta(Z,X,X)
+@ B-freq = 0.019867  C-freq = 0.039733     beta(X;X,X) = beta(X,X,X)
+@ B-freq = 0.019867  C-freq = 0.039733     beta(Y;X,X) = beta(Y,X,X)
+@ B-freq = 0.019867  C-freq = 0.039733     beta(Z;X,X) = beta(Z,X,X)
+@ B-freq = 0.039733  C-freq = 0.039733     beta(X;X,X) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.039733     beta(Y;X,X) =     -0.00126660
+@ B-freq = 0.039733  C-freq = 0.039733     beta(Z;X,X) =      0.38744263
+@ B-freq = 0.059600  C-freq = 0.039733     beta(X;X,X) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.039733     beta(Y;X,X) =     -0.00132270
+@ B-freq = 0.059600  C-freq = 0.039733     beta(Z;X,X) =      0.39197340
+@ B-freq = 0.079467  C-freq = 0.039733     beta(X;X,X) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.039733     beta(Y;X,X) =     -0.00138582
+@ B-freq = 0.079467  C-freq = 0.039733     beta(Z;X,X) =      0.40613639
+@ B-freq = 0.000000  C-freq = 0.039733     beta(X;Y,X) =     -0.00116761
+@ B-freq = 0.000000  C-freq = 0.039733     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.039733     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.039733     beta(X;Y,X) =     -0.00117722
+@ B-freq = 0.019867  C-freq = 0.039733     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.039733     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.039733     beta(X;Y,X) =     -0.00119915
+@ B-freq = 0.039733  C-freq = 0.039733     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.039733     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.039733     beta(X;Y,X) =     -0.00123082
+@ B-freq = 0.059600  C-freq = 0.039733     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.039733     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.039733     beta(X;Y,X) =     -0.00126720
+@ B-freq = 0.079467  C-freq = 0.039733     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.039733     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.039733     beta(X;Z,X) =      0.46597986
+@ B-freq = 0.000000  C-freq = 0.039733     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.039733     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.019867  C-freq = 0.039733     beta(X;Z,X) =      0.51566625
+@ B-freq = 0.019867  C-freq = 0.039733     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.039733     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.039733  C-freq = 0.039733     beta(X;Z,X) =      0.58296105
+@ B-freq = 0.039733  C-freq = 0.039733     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.039733     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.059600  C-freq = 0.039733     beta(X;Z,X) =      0.67334141
+@ B-freq = 0.059600  C-freq = 0.039733     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.039733     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.079467  C-freq = 0.039733     beta(X;Z,X) =      0.79511358
+@ B-freq = 0.079467  C-freq = 0.039733     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.039733     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.000000  C-freq = 0.059600     beta(X;X,X) = beta(X,X,X)
+@ B-freq = 0.000000  C-freq = 0.059600     beta(Y;X,X) = beta(Y,X,X)
+@ B-freq = 0.000000  C-freq = 0.059600     beta(Z;X,X) = beta(Z,X,X)
+@ B-freq = 0.019867  C-freq = 0.059600     beta(X;X,X) = beta(X,X,X)
+@ B-freq = 0.019867  C-freq = 0.059600     beta(Y;X,X) = beta(Y,X,X)
+@ B-freq = 0.019867  C-freq = 0.059600     beta(Z;X,X) = beta(Z,X,X)
+@ B-freq = 0.039733  C-freq = 0.059600     beta(X;X,X) = beta(X,X,X)
+@ B-freq = 0.039733  C-freq = 0.059600     beta(Y;X,X) = beta(Y,X,X)
+@ B-freq = 0.039733  C-freq = 0.059600     beta(Z;X,X) = beta(Z,X,X)
+@ B-freq = 0.059600  C-freq = 0.059600     beta(X;X,X) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.059600     beta(Y;X,X) =     -0.00138321
+@ B-freq = 0.059600  C-freq = 0.059600     beta(Z;X,X) =      0.38200219
+@ B-freq = 0.079467  C-freq = 0.059600     beta(X;X,X) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.059600     beta(Y;X,X) =     -0.00144343
+@ B-freq = 0.079467  C-freq = 0.059600     beta(Z;X,X) =      0.37812246
+@ B-freq = 0.000000  C-freq = 0.059600     beta(X;Y,X) =     -0.00117175
+@ B-freq = 0.000000  C-freq = 0.059600     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.059600     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.059600     beta(X;Y,X) =     -0.00117739
+@ B-freq = 0.019867  C-freq = 0.059600     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.059600     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.059600     beta(X;Y,X) =     -0.00119135
+@ B-freq = 0.039733  C-freq = 0.059600     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.059600     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.059600     beta(X;Y,X) =     -0.00120827
+@ B-freq = 0.059600  C-freq = 0.059600     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.059600     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.059600     beta(X;Y,X) =     -0.00121804
+@ B-freq = 0.079467  C-freq = 0.059600     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.059600     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.059600     beta(X;Z,X) =      0.57713177
+@ B-freq = 0.000000  C-freq = 0.059600     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.059600     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.019867  C-freq = 0.059600     beta(X;Z,X) =      0.65775367
+@ B-freq = 0.019867  C-freq = 0.059600     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.059600     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.039733  C-freq = 0.059600     beta(X;Z,X) =      0.76387875
+@ B-freq = 0.039733  C-freq = 0.059600     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.059600     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.059600  C-freq = 0.059600     beta(X;Z,X) =      0.90498662
+@ B-freq = 0.059600  C-freq = 0.059600     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.059600     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.079467  C-freq = 0.059600     beta(X;Z,X) =      1.09564408
+@ B-freq = 0.079467  C-freq = 0.059600     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.059600     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.000000  C-freq = 0.079467     beta(X;X,X) = beta(X,X,X)
+@ B-freq = 0.000000  C-freq = 0.079467     beta(Y;X,X) = beta(Y,X,X)
+@ B-freq = 0.000000  C-freq = 0.079467     beta(Z;X,X) = beta(Z,X,X)
+@ B-freq = 0.019867  C-freq = 0.079467     beta(X;X,X) = beta(X,X,X)
+@ B-freq = 0.019867  C-freq = 0.079467     beta(Y;X,X) = beta(Y,X,X)
+@ B-freq = 0.019867  C-freq = 0.079467     beta(Z;X,X) = beta(Z,X,X)
+@ B-freq = 0.039733  C-freq = 0.079467     beta(X;X,X) = beta(X,X,X)
+@ B-freq = 0.039733  C-freq = 0.079467     beta(Y;X,X) = beta(Y,X,X)
+@ B-freq = 0.039733  C-freq = 0.079467     beta(Z;X,X) = beta(Z,X,X)
+@ B-freq = 0.059600  C-freq = 0.079467     beta(X;X,X) = beta(X,X,X)
+@ B-freq = 0.059600  C-freq = 0.079467     beta(Y;X,X) = beta(Y,X,X)
+@ B-freq = 0.059600  C-freq = 0.079467     beta(Z;X,X) = beta(Z,X,X)
+@ B-freq = 0.079467  C-freq = 0.079467     beta(X;X,X) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.079467     beta(Y;X,X) =     -0.00148743
+@ B-freq = 0.079467  C-freq = 0.079467     beta(Z;X,X) =      0.35109939
+@ B-freq = 0.000000  C-freq = 0.079467     beta(X;Y,X) =     -0.00116486
+@ B-freq = 0.000000  C-freq = 0.079467     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.079467     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.079467     beta(X;Y,X) =     -0.00115835
+@ B-freq = 0.019867  C-freq = 0.079467     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.079467     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.079467     beta(X;Y,X) =     -0.00115177
+@ B-freq = 0.039733  C-freq = 0.079467     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.079467     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.079467     beta(X;Y,X) =     -0.00113379
+@ B-freq = 0.059600  C-freq = 0.079467     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.079467     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.079467     beta(X;Y,X) =     -0.00108309
+@ B-freq = 0.079467  C-freq = 0.079467     beta(Y;Y,X) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.079467     beta(Z;Y,X) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.079467     beta(X;Z,X) =      0.75330628
+@ B-freq = 0.000000  C-freq = 0.079467     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.079467     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.019867  C-freq = 0.079467     beta(X;Z,X) =      0.87691339
+@ B-freq = 0.019867  C-freq = 0.079467     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.079467     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.039733  C-freq = 0.079467     beta(X;Z,X) =      1.03930006
+@ B-freq = 0.039733  C-freq = 0.079467     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.079467     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.059600  C-freq = 0.079467     beta(X;Z,X) =      1.25679832
+@ B-freq = 0.059600  C-freq = 0.079467     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.079467     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.079467  C-freq = 0.079467     beta(X;Z,X) =      1.55528318
+@ B-freq = 0.079467  C-freq = 0.079467     beta(Y;Z,X) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.079467     beta(Z;Z,X) =      0.00000000
+@ B-freq = 0.000000  C-freq = 0.000000     beta(X;X,Y) = beta(Y,X,X)
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.019867  C-freq = 0.000000     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.019867  C-freq = 0.000000     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.019867  C-freq = 0.000000     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.039733  C-freq = 0.000000     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.039733  C-freq = 0.000000     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.039733  C-freq = 0.000000     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.059600  C-freq = 0.000000     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.059600  C-freq = 0.000000     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.059600  C-freq = 0.000000     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.079467  C-freq = 0.000000     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.079467  C-freq = 0.000000     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.079467  C-freq = 0.000000     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.000000  C-freq = 0.000000     beta(X;Y,Y) = beta(Y,Y,X)
+@ B-freq = 0.000000  C-freq = 0.000000     beta(X;Y,Y) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Y;Y,Y) =     -0.00076709
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Z;Y,Y) =      9.75847443
+@ B-freq = 0.019867  C-freq = 0.000000     beta(X;Y,Y) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.000000     beta(Y;Y,Y) =     -0.00076815
+@ B-freq = 0.019867  C-freq = 0.000000     beta(Z;Y,Y) =      9.79157906
+@ B-freq = 0.039733  C-freq = 0.000000     beta(X;Y,Y) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.000000     beta(Y;Y,Y) =     -0.00077128
+@ B-freq = 0.039733  C-freq = 0.000000     beta(Z;Y,Y) =      9.89204324
+@ B-freq = 0.059600  C-freq = 0.000000     beta(X;Y,Y) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.000000     beta(Y;Y,Y) =     -0.00077636
+@ B-freq = 0.059600  C-freq = 0.000000     beta(Z;Y,Y) =     10.06341379
+@ B-freq = 0.079467  C-freq = 0.000000     beta(X;Y,Y) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.000000     beta(Y;Y,Y) =     -0.00078311
+@ B-freq = 0.079467  C-freq = 0.000000     beta(Z;Y,Y) =     10.31193715
+@ B-freq = 0.000000  C-freq = 0.000000     beta(X;Z,Y) = beta(Z,Y,X)
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Y;Z,Y) = beta(Z,Y,Y)
+@ B-freq = 0.000000  C-freq = 0.000000     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Y;Z,Y) =      9.75847581
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Z;Z,Y) =     -0.00089249
+@ B-freq = 0.019867  C-freq = 0.000000     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.000000     beta(Y;Z,Y) =      9.79158046
+@ B-freq = 0.019867  C-freq = 0.000000     beta(Z;Z,Y) =     -0.00088879
+@ B-freq = 0.039733  C-freq = 0.000000     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.000000     beta(Y;Z,Y) =      9.89204468
+@ B-freq = 0.039733  C-freq = 0.000000     beta(Z;Z,Y) =     -0.00087724
+@ B-freq = 0.059600  C-freq = 0.000000     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.000000     beta(Y;Z,Y) =     10.06341532
+@ B-freq = 0.059600  C-freq = 0.000000     beta(Z;Z,Y) =     -0.00085640
+@ B-freq = 0.079467  C-freq = 0.000000     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.000000     beta(Y;Z,Y) =     10.31193880
+@ B-freq = 0.079467  C-freq = 0.000000     beta(Z;Z,Y) =     -0.00082363
+@ B-freq = 0.000000  C-freq = 0.019867     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.000000  C-freq = 0.019867     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.000000  C-freq = 0.019867     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.019867  C-freq = 0.019867     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.019867  C-freq = 0.019867     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.019867  C-freq = 0.019867     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.039733  C-freq = 0.019867     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.039733  C-freq = 0.019867     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.039733  C-freq = 0.019867     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.059600  C-freq = 0.019867     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.059600  C-freq = 0.019867     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.059600  C-freq = 0.019867     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.079467  C-freq = 0.019867     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.079467  C-freq = 0.019867     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.079467  C-freq = 0.019867     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.000000  C-freq = 0.019867     beta(X;Y,Y) = beta(X,Y,Y)
+@ B-freq = 0.000000  C-freq = 0.019867     beta(Y;Y,Y) = beta(Y,Y,Y)
+@ B-freq = 0.000000  C-freq = 0.019867     beta(Z;Y,Y) = beta(Z,Y,Y)
+@ B-freq = 0.019867  C-freq = 0.019867     beta(X;Y,Y) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.019867     beta(Y;Y,Y) =     -0.00077025
+@ B-freq = 0.019867  C-freq = 0.019867     beta(Z;Y,Y) =      9.85977309
+@ B-freq = 0.039733  C-freq = 0.019867     beta(X;Y,Y) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.019867     beta(Y;Y,Y) =     -0.00077435
+@ B-freq = 0.039733  C-freq = 0.019867     beta(Z;Y,Y) =      9.99726635
+@ B-freq = 0.059600  C-freq = 0.019867     beta(X;Y,Y) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.019867     beta(Y;Y,Y) =     -0.00078027
+@ B-freq = 0.059600  C-freq = 0.019867     beta(Z;Y,Y) =     10.20908668
+@ B-freq = 0.079467  C-freq = 0.019867     beta(X;Y,Y) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.019867     beta(Y;Y,Y) =     -0.00078767
+@ B-freq = 0.079467  C-freq = 0.019867     beta(Z;Y,Y) =     10.50326990
+@ B-freq = 0.000000  C-freq = 0.019867     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.019867     beta(Y;Z,Y) =      9.79021854
+@ B-freq = 0.000000  C-freq = 0.019867     beta(Z;Z,Y) =     -0.00089364
+@ B-freq = 0.019867  C-freq = 0.019867     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.019867     beta(Y;Z,Y) =      9.85556851
+@ B-freq = 0.019867  C-freq = 0.019867     beta(Z;Z,Y) =     -0.00088607
+@ B-freq = 0.039733  C-freq = 0.019867     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.019867     beta(Y;Z,Y) =      9.98984218
+@ B-freq = 0.039733  C-freq = 0.019867     beta(Z;Z,Y) =     -0.00087001
+@ B-freq = 0.059600  C-freq = 0.019867     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.019867     beta(Y;Z,Y) =     10.19776489
+@ B-freq = 0.059600  C-freq = 0.019867     beta(Z;Z,Y) =     -0.00084342
+@ B-freq = 0.079467  C-freq = 0.019867     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.019867     beta(Y;Z,Y) =     10.48698058
+@ B-freq = 0.079467  C-freq = 0.019867     beta(Z;Z,Y) =     -0.00080291
+@ B-freq = 0.000000  C-freq = 0.039733     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.000000  C-freq = 0.039733     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.000000  C-freq = 0.039733     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.019867  C-freq = 0.039733     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.019867  C-freq = 0.039733     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.019867  C-freq = 0.039733     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.039733  C-freq = 0.039733     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.039733  C-freq = 0.039733     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.039733  C-freq = 0.039733     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.059600  C-freq = 0.039733     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.059600  C-freq = 0.039733     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.059600  C-freq = 0.039733     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.079467  C-freq = 0.039733     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.079467  C-freq = 0.039733     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.079467  C-freq = 0.039733     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.000000  C-freq = 0.039733     beta(X;Y,Y) = beta(X,Y,Y)
+@ B-freq = 0.000000  C-freq = 0.039733     beta(Y;Y,Y) = beta(Y,Y,Y)
+@ B-freq = 0.000000  C-freq = 0.039733     beta(Z;Y,Y) = beta(Z,Y,Y)
+@ B-freq = 0.019867  C-freq = 0.039733     beta(X;Y,Y) = beta(X,Y,Y)
+@ B-freq = 0.019867  C-freq = 0.039733     beta(Y;Y,Y) = beta(Y,Y,Y)
+@ B-freq = 0.019867  C-freq = 0.039733     beta(Z;Y,Y) = beta(Z,Y,Y)
+@ B-freq = 0.039733  C-freq = 0.039733     beta(X;Y,Y) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.039733     beta(Y;Y,Y) =     -0.00077930
+@ B-freq = 0.039733  C-freq = 0.039733     beta(Z;Y,Y) =     10.17515794
+@ B-freq = 0.059600  C-freq = 0.039733     beta(X;Y,Y) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.039733     beta(Y;Y,Y) =     -0.00078588
+@ B-freq = 0.059600  C-freq = 0.039733     beta(Z;Y,Y) =     10.43248352
+@ B-freq = 0.079467  C-freq = 0.039733     beta(X;Y,Y) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.039733     beta(Y;Y,Y) =     -0.00079362
+@ B-freq = 0.079467  C-freq = 0.039733     beta(Z;Y,Y) =     10.77948517
+@ B-freq = 0.000000  C-freq = 0.039733     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.039733     beta(Y;Z,Y) =      9.88640956
+@ B-freq = 0.000000  C-freq = 0.039733     beta(Z;Z,Y) =     -0.00089688
+@ B-freq = 0.019867  C-freq = 0.039733     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.039733     beta(Y;Z,Y) =      9.98549893
+@ B-freq = 0.019867  C-freq = 0.039733     beta(Z;Z,Y) =     -0.00088498
+@ B-freq = 0.039733  C-freq = 0.039733     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.039733     beta(Y;Z,Y) =     10.15619728
+@ B-freq = 0.039733  C-freq = 0.039733     beta(Z;Z,Y) =     -0.00086350
+@ B-freq = 0.059600  C-freq = 0.039733     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.039733     beta(Y;Z,Y) =     10.40457256
+@ B-freq = 0.059600  C-freq = 0.039733     beta(Z;Z,Y) =     -0.00082972
+@ B-freq = 0.079467  C-freq = 0.039733     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.039733     beta(Y;Z,Y) =     10.73992911
+@ B-freq = 0.079467  C-freq = 0.039733     beta(Z;Z,Y) =     -0.00077929
+@ B-freq = 0.000000  C-freq = 0.059600     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.000000  C-freq = 0.059600     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.000000  C-freq = 0.059600     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.019867  C-freq = 0.059600     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.019867  C-freq = 0.059600     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.019867  C-freq = 0.059600     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.039733  C-freq = 0.059600     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.039733  C-freq = 0.059600     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.039733  C-freq = 0.059600     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.059600  C-freq = 0.059600     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.059600  C-freq = 0.059600     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.059600  C-freq = 0.059600     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.079467  C-freq = 0.059600     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.079467  C-freq = 0.059600     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.079467  C-freq = 0.059600     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.000000  C-freq = 0.059600     beta(X;Y,Y) = beta(X,Y,Y)
+@ B-freq = 0.000000  C-freq = 0.059600     beta(Y;Y,Y) = beta(Y,Y,Y)
+@ B-freq = 0.000000  C-freq = 0.059600     beta(Z;Y,Y) = beta(Z,Y,Y)
+@ B-freq = 0.019867  C-freq = 0.059600     beta(X;Y,Y) = beta(X,Y,Y)
+@ B-freq = 0.019867  C-freq = 0.059600     beta(Y;Y,Y) = beta(Y,Y,Y)
+@ B-freq = 0.019867  C-freq = 0.059600     beta(Z;Y,Y) = beta(Z,Y,Y)
+@ B-freq = 0.039733  C-freq = 0.059600     beta(X;Y,Y) = beta(X,Y,Y)
+@ B-freq = 0.039733  C-freq = 0.059600     beta(Y;Y,Y) = beta(Y,Y,Y)
+@ B-freq = 0.039733  C-freq = 0.059600     beta(Z;Y,Y) = beta(Z,Y,Y)
+@ B-freq = 0.059600  C-freq = 0.059600     beta(X;Y,Y) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.059600     beta(Y;Y,Y) =     -0.00079280
+@ B-freq = 0.059600  C-freq = 0.059600     beta(Z;Y,Y) =     10.74251189
+@ B-freq = 0.079467  C-freq = 0.059600     beta(X;Y,Y) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.059600     beta(Y;Y,Y) =     -0.00080042
+@ B-freq = 0.079467  C-freq = 0.059600     beta(Z;Y,Y) =     11.15224951
+@ B-freq = 0.000000  C-freq = 0.059600     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.059600     beta(Y;Z,Y) =     10.05000403
+@ B-freq = 0.000000  C-freq = 0.059600     beta(Z;Z,Y) =     -0.00090157
+@ B-freq = 0.019867  C-freq = 0.059600     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.059600     beta(Y;Z,Y) =     10.18541690
+@ B-freq = 0.019867  C-freq = 0.059600     beta(Z;Z,Y) =     -0.00088450
+@ B-freq = 0.039733  C-freq = 0.059600     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.059600     beta(Y;Z,Y) =     10.39639913
+@ B-freq = 0.039733  C-freq = 0.059600     beta(Z;Z,Y) =     -0.00085625
+@ B-freq = 0.059600  C-freq = 0.059600     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.059600     beta(Y;Z,Y) =     10.69060768
+@ B-freq = 0.059600  C-freq = 0.059600     beta(Z;Z,Y) =     -0.00081321
+@ B-freq = 0.079467  C-freq = 0.059600     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.059600     beta(Y;Z,Y) =     11.07938199
+@ B-freq = 0.079467  C-freq = 0.059600     beta(Z;Z,Y) =     -0.00074978
+@ B-freq = 0.000000  C-freq = 0.079467     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.000000  C-freq = 0.079467     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.000000  C-freq = 0.079467     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.019867  C-freq = 0.079467     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.019867  C-freq = 0.079467     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.019867  C-freq = 0.079467     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.039733  C-freq = 0.079467     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.039733  C-freq = 0.079467     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.039733  C-freq = 0.079467     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.059600  C-freq = 0.079467     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.059600  C-freq = 0.079467     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.059600  C-freq = 0.079467     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.079467  C-freq = 0.079467     beta(X;X,Y) = beta(X,Y,X)
+@ B-freq = 0.079467  C-freq = 0.079467     beta(Y;X,Y) = beta(Y,Y,X)
+@ B-freq = 0.079467  C-freq = 0.079467     beta(Z;X,Y) = beta(Z,Y,X)
+@ B-freq = 0.000000  C-freq = 0.079467     beta(X;Y,Y) = beta(X,Y,Y)
+@ B-freq = 0.000000  C-freq = 0.079467     beta(Y;Y,Y) = beta(Y,Y,Y)
+@ B-freq = 0.000000  C-freq = 0.079467     beta(Z;Y,Y) = beta(Z,Y,Y)
+@ B-freq = 0.019867  C-freq = 0.079467     beta(X;Y,Y) = beta(X,Y,Y)
+@ B-freq = 0.019867  C-freq = 0.079467     beta(Y;Y,Y) = beta(Y,Y,Y)
+@ B-freq = 0.019867  C-freq = 0.079467     beta(Z;Y,Y) = beta(Z,Y,Y)
+@ B-freq = 0.039733  C-freq = 0.079467     beta(X;Y,Y) = beta(X,Y,Y)
+@ B-freq = 0.039733  C-freq = 0.079467     beta(Y;Y,Y) = beta(Y,Y,Y)
+@ B-freq = 0.039733  C-freq = 0.079467     beta(Z;Y,Y) = beta(Z,Y,Y)
+@ B-freq = 0.059600  C-freq = 0.079467     beta(X;Y,Y) = beta(X,Y,Y)
+@ B-freq = 0.059600  C-freq = 0.079467     beta(Y;Y,Y) = beta(Y,Y,Y)
+@ B-freq = 0.059600  C-freq = 0.079467     beta(Z;Y,Y) = beta(Z,Y,Y)
+@ B-freq = 0.079467  C-freq = 0.079467     beta(X;Y,Y) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.079467     beta(Y;Y,Y) =     -0.00080715
+@ B-freq = 0.079467  C-freq = 0.079467     beta(Z;Y,Y) =     11.63842722
+@ B-freq = 0.000000  C-freq = 0.079467     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.000000  C-freq = 0.079467     beta(Y;Z,Y) =     10.28615748
+@ B-freq = 0.000000  C-freq = 0.079467     beta(Z;Z,Y) =     -0.00090646
+@ B-freq = 0.019867  C-freq = 0.079467     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.019867  C-freq = 0.079467     beta(Y;Z,Y) =     10.46174846
+@ B-freq = 0.019867  C-freq = 0.079467     beta(Z;Z,Y) =     -0.00088293
+@ B-freq = 0.039733  C-freq = 0.079467     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.039733  C-freq = 0.079467     beta(Y;Z,Y) =     10.71838587
+@ B-freq = 0.039733  C-freq = 0.079467     beta(Z;Z,Y) =     -0.00084593
+@ B-freq = 0.059600  C-freq = 0.079467     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.059600  C-freq = 0.079467     beta(Y;Z,Y) =     11.06567200
+@ B-freq = 0.059600  C-freq = 0.079467     beta(Z;Z,Y) =     -0.00079070
+@ B-freq = 0.079467  C-freq = 0.079467     beta(X;Z,Y) =     -0.00000000
+@ B-freq = 0.079467  C-freq = 0.079467     beta(Y;Z,Y) =     11.51751201
+@ B-freq = 0.079467  C-freq = 0.079467     beta(Z;Z,Y) =     -0.00070995
+@ B-freq = 0.000000  C-freq = 0.000000     beta(X;X,Z) = beta(Z,X,X)
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Y;X,Z) = beta(Z,Y,X)
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.019867  C-freq = 0.000000     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.019867  C-freq = 0.000000     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.019867  C-freq = 0.000000     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.039733  C-freq = 0.000000     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.039733  C-freq = 0.000000     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.039733  C-freq = 0.000000     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.059600  C-freq = 0.000000     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.059600  C-freq = 0.000000     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.059600  C-freq = 0.000000     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.079467  C-freq = 0.000000     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.079467  C-freq = 0.000000     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.079467  C-freq = 0.000000     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.000000  C-freq = 0.000000     beta(X;Y,Z) = beta(Z,Y,X)
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Y;Y,Z) = beta(Z,Y,Y)
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.019867  C-freq = 0.000000     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.019867  C-freq = 0.000000     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.019867  C-freq = 0.000000     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.039733  C-freq = 0.000000     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.039733  C-freq = 0.000000     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.039733  C-freq = 0.000000     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.059600  C-freq = 0.000000     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.059600  C-freq = 0.000000     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.059600  C-freq = 0.000000     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.079467  C-freq = 0.000000     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.079467  C-freq = 0.000000     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.079467  C-freq = 0.000000     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.000000  C-freq = 0.000000     beta(X;Z,Z) = beta(Z,Z,X)
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Y;Z,Z) = beta(Z,Z,Y)
+@ B-freq = 0.000000  C-freq = 0.000000     beta(X;Z,Z) =      0.00000000
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Y;Z,Z) =     -0.00089249
+@ B-freq = 0.000000  C-freq = 0.000000     beta(Z;Z,Z) =      4.81421638
+@ B-freq = 0.019867  C-freq = 0.000000     beta(X;Z,Z) =      0.00000000
+@ B-freq = 0.019867  C-freq = 0.000000     beta(Y;Z,Z) =     -0.00089364
+@ B-freq = 0.019867  C-freq = 0.000000     beta(Z;Z,Z) =      4.84199803
+@ B-freq = 0.039733  C-freq = 0.000000     beta(X;Z,Z) =      0.00000000
+@ B-freq = 0.039733  C-freq = 0.000000     beta(Y;Z,Z) =     -0.00089688
+@ B-freq = 0.039733  C-freq = 0.000000     beta(Z;Z,Z) =      4.92674341
+@ B-freq = 0.059600  C-freq = 0.000000     beta(X;Z,Z) =      0.00000000
+@ B-freq = 0.059600  C-freq = 0.000000     beta(Y;Z,Z) =     -0.00090157
+@ B-freq = 0.059600  C-freq = 0.000000     beta(Z;Z,Z) =      5.07280598
+@ B-freq = 0.079467  C-freq = 0.000000     beta(X;Z,Z) =      0.00000000
+@ B-freq = 0.079467  C-freq = 0.000000     beta(Y;Z,Z) =     -0.00090646
+@ B-freq = 0.079467  C-freq = 0.000000     beta(Z;Z,Z) =      5.28797745
+@ B-freq = 0.000000  C-freq = 0.019867     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.000000  C-freq = 0.019867     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.000000  C-freq = 0.019867     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.019867  C-freq = 0.019867     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.019867  C-freq = 0.019867     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.019867  C-freq = 0.019867     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.039733  C-freq = 0.019867     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.039733  C-freq = 0.019867     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.039733  C-freq = 0.019867     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.059600  C-freq = 0.019867     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.059600  C-freq = 0.019867     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.059600  C-freq = 0.019867     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.079467  C-freq = 0.019867     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.079467  C-freq = 0.019867     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.079467  C-freq = 0.019867     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.000000  C-freq = 0.019867     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.000000  C-freq = 0.019867     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.000000  C-freq = 0.019867     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.019867  C-freq = 0.019867     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.019867  C-freq = 0.019867     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.019867  C-freq = 0.019867     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.039733  C-freq = 0.019867     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.039733  C-freq = 0.019867     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.039733  C-freq = 0.019867     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.059600  C-freq = 0.019867     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.059600  C-freq = 0.019867     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.059600  C-freq = 0.019867     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.079467  C-freq = 0.019867     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.079467  C-freq = 0.019867     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.079467  C-freq = 0.019867     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.000000  C-freq = 0.019867     beta(X;Z,Z) = beta(X,Z,Z)
+@ B-freq = 0.000000  C-freq = 0.019867     beta(Y;Z,Z) = beta(Y,Z,Z)
+@ B-freq = 0.000000  C-freq = 0.019867     beta(Z;Z,Z) = beta(Z,Z,Z)
+@ B-freq = 0.019867  C-freq = 0.019867     beta(X;Z,Z) =      0.00000000
+@ B-freq = 0.019867  C-freq = 0.019867     beta(Y;Z,Z) =     -0.00090069
+@ B-freq = 0.019867  C-freq = 0.019867     beta(Z;Z,Z) =      4.89825946
+@ B-freq = 0.039733  C-freq = 0.019867     beta(X;Z,Z) =      0.00000000
+@ B-freq = 0.039733  C-freq = 0.019867     beta(Y;Z,Z) =     -0.00090961
+@ B-freq = 0.039733  C-freq = 0.019867     beta(Z;Z,Z) =      5.01364602
+@ B-freq = 0.059600  C-freq = 0.019867     beta(X;Z,Z) =      0.00000000
+@ B-freq = 0.059600  C-freq = 0.019867     beta(Y;Z,Z) =     -0.00091950
+@ B-freq = 0.059600  C-freq = 0.019867     beta(Z;Z,Z) =      5.19420034
+@ B-freq = 0.079467  C-freq = 0.019867     beta(X;Z,Z) =      0.00000000
+@ B-freq = 0.079467  C-freq = 0.019867     beta(Y;Z,Z) =     -0.00092874
+@ B-freq = 0.079467  C-freq = 0.019867     beta(Z;Z,Z) =      5.44983476
+@ B-freq = 0.000000  C-freq = 0.039733     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.000000  C-freq = 0.039733     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.000000  C-freq = 0.039733     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.019867  C-freq = 0.039733     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.019867  C-freq = 0.039733     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.019867  C-freq = 0.039733     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.039733  C-freq = 0.039733     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.039733  C-freq = 0.039733     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.039733  C-freq = 0.039733     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.059600  C-freq = 0.039733     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.059600  C-freq = 0.039733     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.059600  C-freq = 0.039733     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.079467  C-freq = 0.039733     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.079467  C-freq = 0.039733     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.079467  C-freq = 0.039733     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.000000  C-freq = 0.039733     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.000000  C-freq = 0.039733     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.000000  C-freq = 0.039733     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.019867  C-freq = 0.039733     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.019867  C-freq = 0.039733     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.019867  C-freq = 0.039733     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.039733  C-freq = 0.039733     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.039733  C-freq = 0.039733     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.039733  C-freq = 0.039733     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.059600  C-freq = 0.039733     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.059600  C-freq = 0.039733     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.059600  C-freq = 0.039733     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.079467  C-freq = 0.039733     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.079467  C-freq = 0.039733     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.079467  C-freq = 0.039733     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.000000  C-freq = 0.039733     beta(X;Z,Z) = beta(X,Z,Z)
+@ B-freq = 0.000000  C-freq = 0.039733     beta(Y;Z,Z) = beta(Y,Z,Z)
+@ B-freq = 0.000000  C-freq = 0.039733     beta(Z;Z,Z) = beta(Z,Z,Z)
+@ B-freq = 0.019867  C-freq = 0.039733     beta(X;Z,Z) = beta(X,Z,Z)
+@ B-freq = 0.019867  C-freq = 0.039733     beta(Y;Z,Z) = beta(Y,Z,Z)
+@ B-freq = 0.019867  C-freq = 0.039733     beta(Z;Z,Z) = beta(Z,Z,Z)
+@ B-freq = 0.039733  C-freq = 0.039733     beta(X;Z,Z) =      0.00000000
+@ B-freq = 0.039733  C-freq = 0.039733     beta(Y;Z,Z) =     -0.00092367
+@ B-freq = 0.039733  C-freq = 0.039733     beta(Z;Z,Z) =      5.16347904
+@ B-freq = 0.059600  C-freq = 0.039733     beta(X;Z,Z) =      0.00000000
+@ B-freq = 0.059600  C-freq = 0.039733     beta(Y;Z,Z) =     -0.00093782
+@ B-freq = 0.059600  C-freq = 0.039733     beta(Z;Z,Z) =      5.38432511
+@ B-freq = 0.079467  C-freq = 0.039733     beta(X;Z,Z) =      0.00000000
+@ B-freq = 0.079467  C-freq = 0.039733     beta(Y;Z,Z) =     -0.00094980
+@ B-freq = 0.079467  C-freq = 0.039733     beta(Z;Z,Z) =      5.68879813
+@ B-freq = 0.000000  C-freq = 0.059600     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.000000  C-freq = 0.059600     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.000000  C-freq = 0.059600     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.019867  C-freq = 0.059600     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.019867  C-freq = 0.059600     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.019867  C-freq = 0.059600     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.039733  C-freq = 0.059600     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.039733  C-freq = 0.059600     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.039733  C-freq = 0.059600     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.059600  C-freq = 0.059600     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.059600  C-freq = 0.059600     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.059600  C-freq = 0.059600     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.079467  C-freq = 0.059600     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.079467  C-freq = 0.059600     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.079467  C-freq = 0.059600     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.000000  C-freq = 0.059600     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.000000  C-freq = 0.059600     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.000000  C-freq = 0.059600     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.019867  C-freq = 0.059600     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.019867  C-freq = 0.059600     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.019867  C-freq = 0.059600     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.039733  C-freq = 0.059600     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.039733  C-freq = 0.059600     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.039733  C-freq = 0.059600     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.059600  C-freq = 0.059600     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.059600  C-freq = 0.059600     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.059600  C-freq = 0.059600     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.079467  C-freq = 0.059600     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.079467  C-freq = 0.059600     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.079467  C-freq = 0.059600     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.000000  C-freq = 0.059600     beta(X;Z,Z) = beta(X,Z,Z)
+@ B-freq = 0.000000  C-freq = 0.059600     beta(Y;Z,Z) = beta(Y,Z,Z)
+@ B-freq = 0.000000  C-freq = 0.059600     beta(Z;Z,Z) = beta(Z,Z,Z)
+@ B-freq = 0.019867  C-freq = 0.059600     beta(X;Z,Z) = beta(X,Z,Z)
+@ B-freq = 0.019867  C-freq = 0.059600     beta(Y;Z,Z) = beta(Y,Z,Z)
+@ B-freq = 0.019867  C-freq = 0.059600     beta(Z;Z,Z) = beta(Z,Z,Z)
+@ B-freq = 0.039733  C-freq = 0.059600     beta(X;Z,Z) = beta(X,Z,Z)
+@ B-freq = 0.039733  C-freq = 0.059600     beta(Y;Z,Z) = beta(Y,Z,Z)
+@ B-freq = 0.039733  C-freq = 0.059600     beta(Z;Z,Z) = beta(Z,Z,Z)
+@ B-freq = 0.059600  C-freq = 0.059600     beta(X;Z,Z) =      0.00000000
+@ B-freq = 0.059600  C-freq = 0.059600     beta(Y;Z,Z) =     -0.00095466
+@ B-freq = 0.059600  C-freq = 0.059600     beta(Z;Z,Z) =      5.65386165
+@ B-freq = 0.079467  C-freq = 0.059600     beta(X;Z,Z) =      0.00000000
+@ B-freq = 0.079467  C-freq = 0.059600     beta(Y;Z,Z) =     -0.00096667
+@ B-freq = 0.079467  C-freq = 0.059600     beta(Z;Z,Z) =      6.01901492
+@ B-freq = 0.000000  C-freq = 0.079467     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.000000  C-freq = 0.079467     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.000000  C-freq = 0.079467     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.019867  C-freq = 0.079467     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.019867  C-freq = 0.079467     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.019867  C-freq = 0.079467     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.039733  C-freq = 0.079467     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.039733  C-freq = 0.079467     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.039733  C-freq = 0.079467     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.059600  C-freq = 0.079467     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.059600  C-freq = 0.079467     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.059600  C-freq = 0.079467     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.079467  C-freq = 0.079467     beta(X;X,Z) = beta(X,Z,X)
+@ B-freq = 0.079467  C-freq = 0.079467     beta(Y;X,Z) = beta(Y,Z,X)
+@ B-freq = 0.079467  C-freq = 0.079467     beta(Z;X,Z) = beta(Z,Z,X)
+@ B-freq = 0.000000  C-freq = 0.079467     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.000000  C-freq = 0.079467     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.000000  C-freq = 0.079467     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.019867  C-freq = 0.079467     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.019867  C-freq = 0.079467     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.019867  C-freq = 0.079467     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.039733  C-freq = 0.079467     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.039733  C-freq = 0.079467     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.039733  C-freq = 0.079467     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.059600  C-freq = 0.079467     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.059600  C-freq = 0.079467     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.059600  C-freq = 0.079467     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.079467  C-freq = 0.079467     beta(X;Y,Z) = beta(X,Z,Y)
+@ B-freq = 0.079467  C-freq = 0.079467     beta(Y;Y,Z) = beta(Y,Z,Y)
+@ B-freq = 0.079467  C-freq = 0.079467     beta(Z;Y,Z) = beta(Z,Z,Y)
+@ B-freq = 0.000000  C-freq = 0.079467     beta(X;Z,Z) = beta(X,Z,Z)
+@ B-freq = 0.000000  C-freq = 0.079467     beta(Y;Z,Z) = beta(Y,Z,Z)
+@ B-freq = 0.000000  C-freq = 0.079467     beta(Z;Z,Z) = beta(Z,Z,Z)
+@ B-freq = 0.019867  C-freq = 0.079467     beta(X;Z,Z) = beta(X,Z,Z)
+@ B-freq = 0.019867  C-freq = 0.079467     beta(Y;Z,Z) = beta(Y,Z,Z)
+@ B-freq = 0.019867  C-freq = 0.079467     beta(Z;Z,Z) = beta(Z,Z,Z)
+@ B-freq = 0.039733  C-freq = 0.079467     beta(X;Z,Z) = beta(X,Z,Z)
+@ B-freq = 0.039733  C-freq = 0.079467     beta(Y;Z,Z) = beta(Y,Z,Z)
+@ B-freq = 0.039733  C-freq = 0.079467     beta(Z;Z,Z) = beta(Z,Z,Z)
+@ B-freq = 0.059600  C-freq = 0.079467     beta(X;Z,Z) = beta(X,Z,Z)
+@ B-freq = 0.059600  C-freq = 0.079467     beta(Y;Z,Z) = beta(Y,Z,Z)
+@ B-freq = 0.059600  C-freq = 0.079467     beta(Z;Z,Z) = beta(Z,Z,Z)
+@ B-freq = 0.079467  C-freq = 0.079467     beta(X;Z,Z) =      0.00000000
+@ B-freq = 0.079467  C-freq = 0.079467     beta(Y;Z,Z) =     -0.00097423
+@ B-freq = 0.079467  C-freq = 0.079467     beta(Z;Z,Z) =      6.46165126
+
+  Total CPU  time used in RESPONSE:   7.57 seconds
+  Total wall time used in RESPONSE:   7.60 seconds
+
+
+                   .-------------------------------------------.
+                   | End of Dynamic Property Section (RESPONS) |
+                   `-------------------------------------------'
+
+  Total CPU  time used in DALTON:   7.95 seconds
+  Total wall time used in DALTON:   7.98 seconds
+
+ 
+     Date and time (Linux)  : Thu Sep  7 17:48:58 2023
+     Host name              : sn-mem                                  
