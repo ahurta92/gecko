@@ -111,4 +111,5 @@ def _maybe_attach_basis_from_pairs(calc: Calculation) -> None:
     basis = infer_basis_from_dalton_mol(preferred_mol)
     if basis:
         calc.basis = basis
+        calc.meta["basis"] = calc.basis
         calc.meta.setdefault("inferred_from", {}).setdefault("basis", "mol")

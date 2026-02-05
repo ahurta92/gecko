@@ -183,6 +183,7 @@ def parse_run(calc: Calculation) -> None:
     if basis is None:
         basis = _infer_mra_basis_from_obj(calc.data.get("raw_json"))
     calc.basis = basis or "mra"
+    calc.meta["basis"] = calc.basis
 
     # Tensor-first hyperpolarizability
     calc.data["beta"] = _beta_df_to_tensor(obj.beta_pivot)
@@ -207,6 +208,9 @@ def parse_run(calc: Calculation) -> None:
     calc.meta["ground_state_energy"] = obj.ground_state_energy
 
     if obj.raman_by_freq is not None:
+        for _, rows in obj.raman_by_freq.items():
+            if isinstance(rows, list):
+                rows.sort(key=lambda r: (float(r.get("freq_cm1", 0.0)), int(r.get("mode", 0))))
         calc.data["raman"] = {
             "polarization_frequencies": np.asarray(
                 obj.polarization_frequencies, dtype=float

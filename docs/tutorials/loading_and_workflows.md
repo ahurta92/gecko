@@ -29,11 +29,11 @@ You can also point `load_calc` at a **single artifact file**:
 ```python
 from gecko.core.load import load_calc
 
-# Dalton: load and prefer a specific output file inside its directory
-opt = load_calc("raman_paper/H2O/aug-cc-pVDZ/optimize_H2O_aug-cc-pVDZ.out")
+# Dalton: load files in a run directory
+aopt = load_calc("raman_paper/H2O/aug-cc-pVDZ")
 
 # MADNESS: load legacy output.json or modern calc_info.json-shaped files
-mad = load_calc("some_run/output.json")
+mad = load_calc("some_run")
 ```
 
 ## 2) Bulk-load a directory tree

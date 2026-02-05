@@ -477,6 +477,9 @@ def _normalize_raman_rows(
         for row in rows:
             if "dep_ratio" not in row and "depol_ratio" in row:
                 row["dep_ratio"] = row.get("depol_ratio")
+        rows.sort(key=lambda r: (float(r.get("freq_cm1", 0.0)), int(r.get("mode", 0))))
+        for idx, row in enumerate(rows, start=1):
+            row["mode"] = idx
     return raman_by_freq
 
 
@@ -683,7 +686,8 @@ def parse_run(calc: Calculation) -> None:
         calc.meta["basis_guess"] = primary["basis_guess"]
 
     if primary.get("basis") is not None:
-        calc.meta["basis"] = primary["basis"]
+        calc.basis = primary["basis"]
+        calc.meta["basis"] = calc.basis
         inferred = calc.meta.setdefault("inferred_from", {})
         if primary.get("basis") == primary.get("basis_guess"):
             inferred.setdefault("basis", "filename")

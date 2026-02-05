@@ -13,6 +13,7 @@ from gecko.tables.extractors import (
     extract_beta,
     extract_dipole,
     extract_energy,
+    extract_raman,
 )
 
 
@@ -75,4 +76,10 @@ class TableBuilder:
         rows: list[dict[str, Any]] = []
         for calc in self.calcs:
             rows.extend(extract_dipole(calc))
+        return pd.DataFrame(rows)
+
+    def build_raman(self) -> pd.DataFrame:
+        rows: list[dict[str, Any]] = []
+        for calc in self.calcs:
+            rows.extend(extract_raman(calc))
         return pd.DataFrame(rows)
