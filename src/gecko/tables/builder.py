@@ -90,6 +90,7 @@ class TableBuilder:
         ref_basis: str,
         keys: list[str] | None = None,
         rel_eps: float = 1e-12,
+        small_thresh: float = 1e-6,
     ) -> pd.DataFrame:
         df = self.build_energy()
         if df.empty:
@@ -116,7 +117,8 @@ class TableBuilder:
                 continue
             col = pivot[basis].astype(float)
             delta = col - ref_vals
-            rel = np.where(np.abs(ref_vals) > rel_eps, delta / np.abs(ref_vals), np.nan)
+            rel = np.where(np.abs(ref_vals) > small_thresh, delta / np.abs(ref_vals), np.nan)
+            rel = np.where(np.abs(ref_vals) > rel_eps, rel, np.nan)
             pivot[f"delta_{basis}"] = delta
             pivot[f"rel_{basis}"] = rel
 
@@ -129,6 +131,7 @@ class TableBuilder:
         ref_basis: str,
         keys: list[str] | None = None,
         rel_eps: float = 1e-12,
+        small_thresh: float = 1e-6,
     ) -> pd.DataFrame:
         df = self.build_energy()
         if df.empty:
@@ -158,7 +161,10 @@ class TableBuilder:
                 val = float(row[basis])
                 ref_val = float(row[ref_basis])
                 delta = val - ref_val
-                rel = delta / abs(ref_val) if abs(ref_val) > rel_eps else np.nan
+                if abs(ref_val) < small_thresh:
+                    rel = np.nan
+                else:
+                    rel = delta / abs(ref_val) if abs(ref_val) > rel_eps else np.nan
                 long_rows.append(
                     {
                         **{k: row[k] for k in keys},
@@ -166,6 +172,170 @@ class TableBuilder:
                         "basis": basis,
                         "energy": val,
                         "ref_energy": ref_val,
+                        "delta": delta,
+                        "rel": rel,
+                    }
+                )
+
+        return pd.DataFrame(long_rows)
+
+    def compare_alpha_long(
+        self,
+        *,
+        ref_basis: str,
+        keys: list[str] | None = None,
+        rel_eps: float = 1e-12,
+        small_thresh: float = 1e-6,
+    ) -> pd.DataFrame:
+        df = self.build_alpha()
+        if df.empty:
+            return df
+
+        if keys is None:
+            keys = ["mol_id", "method", "omega", "ij"]
+
+        pivot = df.pivot_table(index=keys, columns="basis", values="value", aggfunc="first")
+        pivot = pivot.reset_index()
+
+        if ref_basis not in pivot.columns:
+            basis_cols = [c for c in pivot.columns if c not in keys]
+            mra_cols = [c for c in basis_cols if str(c).startswith("mra-")]
+            ref_basis = (mra_cols[0] if mra_cols else (basis_cols[0] if basis_cols else ref_basis))
+            if ref_basis not in pivot.columns:
+                return pd.DataFrame()
+
+        basis_cols = [c for c in pivot.columns if c not in keys]
+
+        long_rows: list[dict[str, Any]] = []
+        for _, row in pivot.iterrows():
+            ref_val = float(row[ref_basis])
+            for basis in basis_cols:
+                if basis == ref_basis:
+                    continue
+                val = float(row[basis])
+                delta = val - ref_val
+                if abs(ref_val) < small_thresh:
+                    rel = np.nan
+                else:
+                    rel = delta / abs(ref_val) if abs(ref_val) > rel_eps else np.nan
+                long_rows.append(
+                    {
+                        **{k: row[k] for k in keys},
+                        "ref_basis": ref_basis,
+                        "basis": basis,
+                        "value": val,
+                        "ref_value": ref_val,
+                        "delta": delta,
+                        "rel": rel,
+                    }
+                )
+
+        return pd.DataFrame(long_rows)
+
+    def compare_beta_long(
+        self,
+        *,
+        ref_basis: str,
+        keys: list[str] | None = None,
+        rel_eps: float = 1e-12,
+        small_thresh: float = 1e-6,
+    ) -> pd.DataFrame:
+        df = self.build_beta()
+        if df.empty:
+            return df
+
+        if keys is None:
+            keys = ["mol_id", "method", "omegaA", "omegaB", "omegaC", "ijk"]
+
+        pivot = df.pivot_table(index=keys, columns="basis", values="value", aggfunc="first")
+        pivot = pivot.reset_index()
+
+        if ref_basis not in pivot.columns:
+            basis_cols = [c for c in pivot.columns if c not in keys]
+            mra_cols = [c for c in basis_cols if str(c).startswith("mra-")]
+            ref_basis = (mra_cols[0] if mra_cols else (basis_cols[0] if basis_cols else ref_basis))
+            if ref_basis not in pivot.columns:
+                return pd.DataFrame()
+
+        basis_cols = [c for c in pivot.columns if c not in keys]
+
+        long_rows: list[dict[str, Any]] = []
+        for _, row in pivot.iterrows():
+            ref_val = float(row[ref_basis])
+            for basis in basis_cols:
+                if basis == ref_basis:
+                    continue
+                val = float(row[basis])
+                delta = val - ref_val
+                if abs(ref_val) < small_thresh:
+                    rel = np.nan
+                else:
+                    rel = delta / abs(ref_val) if abs(ref_val) > rel_eps else np.nan
+                long_rows.append(
+                    {
+                        **{k: row[k] for k in keys},
+                        "ref_basis": ref_basis,
+                        "basis": basis,
+                        "value": val,
+                        "ref_value": ref_val,
+                        "delta": delta,
+                        "rel": rel,
+                    }
+                )
+
+        return pd.DataFrame(long_rows)
+
+    def compare_raman_long(
+        self,
+        *,
+        ref_basis: str,
+        property_name: str,
+        keys: list[str] | None = None,
+        rel_eps: float = 1e-12,
+        small_thresh: float = 1e-6,
+    ) -> pd.DataFrame:
+        df = self.build_raman()
+        if df.empty:
+            return df
+
+        if property_name not in df.columns:
+            return pd.DataFrame()
+
+        if keys is None:
+            keys = ["mol_id", "method", "omega_pol", "mode", "freq_cm1"]
+
+        pivot = df.pivot_table(index=keys, columns="basis", values=property_name, aggfunc="first")
+        pivot = pivot.reset_index()
+
+        if ref_basis not in pivot.columns:
+            basis_cols = [c for c in pivot.columns if c not in keys]
+            mra_cols = [c for c in basis_cols if str(c).startswith("mra-")]
+            ref_basis = (mra_cols[0] if mra_cols else (basis_cols[0] if basis_cols else ref_basis))
+            if ref_basis not in pivot.columns:
+                return pd.DataFrame()
+
+        basis_cols = [c for c in pivot.columns if c not in keys]
+
+        long_rows: list[dict[str, Any]] = []
+        for _, row in pivot.iterrows():
+            ref_val = float(row[ref_basis])
+            for basis in basis_cols:
+                if basis == ref_basis:
+                    continue
+                val = float(row[basis])
+                delta = val - ref_val
+                if abs(ref_val) < small_thresh:
+                    rel = np.nan
+                else:
+                    rel = delta / abs(ref_val) if abs(ref_val) > rel_eps else np.nan
+                long_rows.append(
+                    {
+                        **{k: row[k] for k in keys},
+                        "ref_basis": ref_basis,
+                        "basis": basis,
+                        "property": property_name,
+                        "value": val,
+                        "ref_value": ref_val,
                         "delta": delta,
                         "rel": rel,
                     }
