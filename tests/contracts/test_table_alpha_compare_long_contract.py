@@ -18,7 +18,7 @@ def test_table_alpha_compare_long_contract() -> None:
     calc_b = load_calc(FIXTURES / "05_dalton_raman_h2o")
 
     tb = TableBuilder([calc_a, calc_b])
-    df = tb.compare_alpha_long(ref_basis="mra-p07", keys=["mol_id", "omega", "ij"])
+    df = tb.compare_alpha_long(ref_basis="mra-p07", keys=["mol_id", "omega", "ij"],small_thresh=1e-3)
     assert not df.empty
 
     required_cols = {"mol_id", "omega", "ij", "ref_basis", "basis", "value", "ref_value", "delta", "rel"}
@@ -32,3 +32,34 @@ def test_table_alpha_compare_long_contract() -> None:
     df_view = df[view_cols].sort_values(["omega", "ij", "basis"]).reset_index(drop=True)
     logger.info("Alpha comparison long table rows=%d", len(df_view))
     logger.info("Alpha comparison long table:\n%s", df_view.to_string(index=False))
+
+
+def test_table_alpha_compare_long_multibasis_beta_data() -> None:
+    beta_root = FIXTURES.parent / "beta_data"
+    mol_dirs = [p for p in sorted(beta_root.iterdir()) if p.is_dir()]
+
+    for mol_dir in mol_dirs:
+        calc_dirs = [p for p in sorted(mol_dir.iterdir()) if p.is_dir()]
+        calcs = [load_calc(p) for p in calc_dirs]
+        tb = TableBuilder(calcs)
+
+        alpha_df = tb.build_alpha()
+        if alpha_df.empty:
+            continue
+
+        ref_basis = "mra-d06"
+        df = tb.compare_alpha_long(ref_basis=ref_basis, keys=["mol_id", "omega", "ij"],small_thresh=1e-3)
+        if df.empty:
+            basis_cols = sorted(set(alpha_df["basis"].dropna().tolist()))
+            if not basis_cols:
+                continue
+            ref_basis = basis_cols[0]
+            df = tb.compare_alpha_long(ref_basis=ref_basis, keys=["mol_id", "omega", "ij"],small_thresh=1e-3)
+
+        assert not df.empty
+        assert (df["ref_basis"] == ref_basis).all()
+
+        view_cols = ["mol_id", "omega", "ij", "ref_basis", "basis", "value", "ref_value", "delta", "rel"]
+        df_view = df[view_cols].sort_values(["omega", "ij", "basis"]).reset_index(drop=True)
+        logger.info("Alpha comparison long table (beta_data/%s) rows=%d", mol_dir.name, len(df_view))
+        logger.info("Alpha comparison long table (beta_data/%s):\n%s", mol_dir.name, df_view.to_string(index=False))

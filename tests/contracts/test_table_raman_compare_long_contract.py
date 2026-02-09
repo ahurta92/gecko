@@ -18,16 +18,16 @@ def _run_property(property_name: str) -> None:
     calc_b = load_calc(FIXTURES / "05_dalton_raman_h2o")
 
     tb = TableBuilder([calc_a, calc_b])
-    df = tb.compare_raman_long(ref_basis="mra-p07", property_name=property_name, keys=["mol_id", "omega_pol", "mode", "freq_cm1"])
+    df = tb.compare_raman_long(ref_basis="mra-p07", property_name=property_name, keys=["mol_id", "omega_pol", "mode"])
     assert not df.empty
 
-    required_cols = {"mol_id", "omega_pol", "mode", "freq_cm1", "ref_basis", "basis", "property", "value", "ref_value", "delta", "rel"}
+    required_cols = {"mol_id", "omega_pol", "mode", "freq_cm1", "ref_freq_cm1", "ref_basis", "basis", "property", "value", "ref_value", "delta", "rel"}
     assert set(df.columns) >= required_cols
 
     vals = df["value"].astype(float)
     assert np.isfinite(vals.dropna()).all()
 
-    view_cols = ["mol_id", "omega_pol", "mode", "freq_cm1", "ref_basis", "basis", "property", "value", "ref_value", "delta", "rel"]
+    view_cols = ["mol_id", "omega_pol", "mode", "freq_cm1", "ref_freq_cm1", "ref_basis", "basis", "property", "value", "ref_value", "delta", "rel"]
     df_view = df[view_cols].sort_values(["omega_pol", "mode", "basis"]).reset_index(drop=True)
     logger.info("Raman comparison long table (%s) rows=%d", property_name, len(df_view))
     logger.info("Raman comparison long table (%s):\n%s", property_name, df_view.to_string(index=False))

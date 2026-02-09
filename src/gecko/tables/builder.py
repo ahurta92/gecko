@@ -302,10 +302,13 @@ class TableBuilder:
             return pd.DataFrame()
 
         if keys is None:
-            keys = ["mol_id", "method", "omega_pol", "mode", "freq_cm1"]
+            keys = ["mol_id", "method", "omega_pol", "mode"]
 
         pivot = df.pivot_table(index=keys, columns="basis", values=property_name, aggfunc="first")
         pivot = pivot.reset_index()
+
+        freq_pivot = df.pivot_table(index=keys, columns="basis", values="freq_cm1", aggfunc="first")
+        freq_pivot = freq_pivot.reset_index()
 
         if ref_basis not in pivot.columns:
             basis_cols = [c for c in pivot.columns if c not in keys]
@@ -317,12 +320,20 @@ class TableBuilder:
         basis_cols = [c for c in pivot.columns if c not in keys]
 
         long_rows: list[dict[str, Any]] = []
+        freq_by_key = {
+            tuple(freq_row[k] for k in keys): freq_row
+            for _, freq_row in freq_pivot.iterrows()
+        }
+
         for _, row in pivot.iterrows():
             ref_val = float(row[ref_basis])
+            freq_row = freq_by_key.get(tuple(row[k] for k in keys), {})
+            ref_freq = float(freq_row.get(ref_basis)) if ref_basis in freq_row else np.nan
             for basis in basis_cols:
                 if basis == ref_basis:
                     continue
                 val = float(row[basis])
+                freq_val = float(freq_row.get(basis)) if basis in freq_row else np.nan
                 delta = val - ref_val
                 if abs(ref_val) < small_thresh:
                     rel = np.nan
@@ -336,6 +347,8 @@ class TableBuilder:
                         "property": property_name,
                         "value": val,
                         "ref_value": ref_val,
+                        "freq_cm1": freq_val,
+                        "ref_freq_cm1": ref_freq,
                         "delta": delta,
                         "rel": rel,
                     }
