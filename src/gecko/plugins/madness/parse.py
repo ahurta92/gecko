@@ -268,6 +268,360 @@ def _infer_method_from_input_in_text(text: str) -> str | None:
     return None
 
 
+def _as_float(value: Any) -> float | None:
+    try:
+        if value is None:
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _as_int(value: Any) -> int | None:
+    try:
+        if value is None:
+            return None
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _as_bool(value: Any) -> bool | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        lower = value.strip().lower()
+        if lower in ("true", "t", "yes", "y", "1"):
+            return True
+        if lower in ("false", "f", "no", "n", "0"):
+            return False
+    return None
+
+
+def _lookup_frequency_value(mapping: Any, freq_key: Any) -> Any:
+    if not isinstance(mapping, dict):
+        return None
+    if freq_key in mapping:
+        return mapping[freq_key]
+
+    key_str = str(freq_key)
+    if key_str in mapping:
+        return mapping[key_str]
+
+    target = _as_float(freq_key)
+    if target is None:
+        return None
+    for k, v in mapping.items():
+        kval = _as_float(k)
+        if kval is None:
+            continue
+        if abs(kval - target) <= 1e-10:
+            return v
+    return None
+
+
+def _sum_metric(rows: list[dict[str, Any]], key: str) -> float:
+    total = 0.0
+    for row in rows:
+        value = row.get(key)
+        if isinstance(value, (int, float)):
+            total += float(value)
+    return float(total)
+
+
+def _extract_response_metadata(raw_json: dict[str, Any]) -> dict[str, Any] | None:
+    tasks = raw_json.get("tasks")
+    if isinstance(tasks, list):
+        for task in tasks:
+            if not isinstance(task, dict):
+                continue
+            if task.get("type") != "response":
+                continue
+            metadata = task.get("metadata")
+            if isinstance(metadata, dict):
+                return metadata
+
+    top_metadata = raw_json.get("metadata")
+    if isinstance(top_metadata, dict) and isinstance(top_metadata.get("states"), dict):
+        return top_metadata
+
+    if isinstance(raw_json.get("states"), dict):
+        return raw_json
+
+    return None
+
+
+def _extract_state_point_timing_rows(metadata: dict[str, Any]) -> list[dict[str, Any]]:
+    states = metadata.get("states")
+    if not isinstance(states, dict):
+        return []
+
+    rows: list[dict[str, Any]] = []
+    for state_id, state_data in states.items():
+        if not isinstance(state_data, dict):
+            continue
+        protocols = state_data.get("protocols")
+        if not isinstance(protocols, dict):
+            continue
+
+        for protocol_id, protocol_data in protocols.items():
+            if not isinstance(protocol_data, dict):
+                continue
+
+            timings = protocol_data.get("timings")
+            if not isinstance(timings, dict):
+                continue
+
+            converged = protocol_data.get("converged")
+            saved = protocol_data.get("saved")
+            restart_provenance = protocol_data.get("restart_provenance")
+
+            for freq_key, timing in timings.items():
+                if not isinstance(timing, dict):
+                    continue
+                cpu_seconds = _as_float(timing.get("cpu_seconds"))
+                wall_seconds = _as_float(timing.get("wall_seconds"))
+                if cpu_seconds is None and wall_seconds is None:
+                    continue
+
+                restart_data = _lookup_frequency_value(restart_provenance, freq_key)
+                if not isinstance(restart_data, dict):
+                    restart_data = {}
+
+                rows.append(
+                    {
+                        "timing_kind": "state_point",
+                        "state_id": str(state_id),
+                        "protocol": str(protocol_id),
+                        "frequency": _as_float(freq_key),
+                        "cpu_seconds": cpu_seconds,
+                        "wall_seconds": wall_seconds,
+                        "converged": _as_bool(_lookup_frequency_value(converged, freq_key)),
+                        "saved": _as_bool(_lookup_frequency_value(saved, freq_key)),
+                        "restart_kind": str(restart_data["kind"])
+                        if restart_data.get("kind") is not None
+                        else None,
+                        "restart_loaded_from_disk": _as_bool(
+                            restart_data.get("loaded_from_disk")
+                        ),
+                        "restart_promoted_from_static": _as_bool(
+                            restart_data.get("promoted_from_static")
+                        ),
+                        "restart_source_frequency": _as_float(
+                            restart_data.get("source_frequency")
+                        ),
+                        "restart_source_protocol": str(restart_data["source_protocol"])
+                        if restart_data.get("source_protocol") is not None
+                        else None,
+                        "derived_state_id": None,
+                        "owner_group": None,
+                        "success": None,
+                    }
+                )
+    return rows
+
+
+def _extract_derived_request_timing_rows(metadata: dict[str, Any]) -> list[dict[str, Any]]:
+    derived = metadata.get("derived_state_planner")
+    if not isinstance(derived, dict):
+        return []
+    execution = derived.get("execution")
+    if not isinstance(execution, dict):
+        return []
+
+    request_timings = execution.get("request_timings")
+    if not isinstance(request_timings, list):
+        return []
+
+    rows: list[dict[str, Any]] = []
+    for entry in request_timings:
+        if not isinstance(entry, dict):
+            continue
+        cpu_seconds = _as_float(entry.get("cpu_seconds"))
+        wall_seconds = _as_float(entry.get("wall_seconds"))
+        if cpu_seconds is None and wall_seconds is None:
+            continue
+
+        rows.append(
+            {
+                "timing_kind": "derived_request",
+                "state_id": None,
+                "protocol": None,
+                "frequency": None,
+                "cpu_seconds": cpu_seconds,
+                "wall_seconds": wall_seconds,
+                "converged": None,
+                "saved": None,
+                "restart_kind": None,
+                "restart_loaded_from_disk": None,
+                "restart_promoted_from_static": None,
+                "restart_source_frequency": None,
+                "restart_source_protocol": None,
+                "derived_state_id": str(entry["derived_state_id"])
+                if entry.get("derived_state_id") is not None
+                else None,
+                "owner_group": _as_int(entry.get("owner_group")),
+                "success": _as_bool(entry.get("success")),
+            }
+        )
+    return rows
+
+
+def _build_timing_summary(
+    metadata: dict[str, Any],
+    state_rows: list[dict[str, Any]],
+    derived_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    state_runtime = metadata.get("state_parallel_runtime")
+    if not isinstance(state_runtime, dict):
+        state_runtime = {}
+
+    state_planner = metadata.get("state_parallel_planner")
+    if not isinstance(state_planner, dict):
+        state_planner = {}
+
+    derived_planner = metadata.get("derived_state_planner")
+    if not isinstance(derived_planner, dict):
+        derived_planner = {}
+    derived_execution = derived_planner.get("execution")
+    if not isinstance(derived_execution, dict):
+        derived_execution = {}
+
+    effective_groups = state_runtime.get("effective_point_groups")
+    if effective_groups is None:
+        effective_groups = state_planner.get("effective_point_groups")
+
+    start_protocol_index = state_runtime.get("effective_point_parallel_start_protocol_index")
+    if start_protocol_index is None:
+        start_protocol_index = state_planner.get("point_parallel_start_protocol_index")
+
+    effective_mode = state_planner.get("effective_mode")
+    if effective_mode is None:
+        effective_mode = state_planner.get("requested_mode")
+
+    return {
+        "state_point_count": len(state_rows),
+        "state_point_cpu_seconds": _sum_metric(state_rows, "cpu_seconds"),
+        "state_point_wall_seconds": _sum_metric(state_rows, "wall_seconds"),
+        "derived_request_count": len(derived_rows),
+        "derived_request_cpu_seconds": _sum_metric(derived_rows, "cpu_seconds"),
+        "derived_request_wall_seconds": _sum_metric(derived_rows, "wall_seconds"),
+        "derived_request_success_count": sum(1 for row in derived_rows if row.get("success") is True),
+        "derived_request_failed_count": sum(1 for row in derived_rows if row.get("success") is False),
+        "derived_execution_mode": str(derived_execution["mode"])
+        if derived_execution.get("mode") is not None
+        else None,
+        "derived_execution_attempted": _as_bool(derived_execution.get("attempted")),
+        "derived_execution_groups": _as_int(derived_execution.get("execution_groups")),
+        "derived_execution_total_cpu_seconds": _as_float(
+            derived_execution.get("total_cpu_seconds")
+        ),
+        "derived_execution_total_wall_seconds": _as_float(
+            derived_execution.get("total_wall_seconds")
+        ),
+        "derived_execution_completed_requests": _as_int(
+            derived_execution.get("completed_requests")
+        ),
+        "derived_execution_failed_requests": _as_int(derived_execution.get("failed_requests")),
+        "derived_execution_blocked_requests": _as_int(
+            derived_execution.get("blocked_requests")
+        ),
+        "derived_execution_ready_requests": _as_int(derived_execution.get("ready_requests")),
+        "state_parallel_effective_groups": _as_int(effective_groups),
+        "state_parallel_start_protocol_index": _as_int(start_protocol_index),
+        "state_parallel_effective_mode": str(effective_mode)
+        if effective_mode is not None
+        else None,
+        "state_parallel_frequency_partition_policy": str(
+            state_planner["frequency_partition_policy"]
+        )
+        if state_planner.get("frequency_partition_policy") is not None
+        else None,
+        "state_parallel_requested_groups": _as_int(state_planner.get("requested_groups")),
+        "state_parallel_world_size": _as_int(state_planner.get("world_size")),
+        "state_parallel_execution_enabled": _as_bool(state_planner.get("execution_enabled")),
+        "state_parallel_subgroup_parallel_enabled": _as_bool(
+            state_planner.get("subgroup_parallel_enabled")
+        ),
+        "state_parallel_restart_point_parallel_promoted": _as_bool(
+            state_runtime.get("restart_point_parallel_promoted")
+        ),
+        "state_parallel_restart_protocol0_saved_complete": _as_bool(
+            state_runtime.get("restart_protocol0_saved_complete")
+        ),
+    }
+
+
+def _parse_madness_timings(raw_json: dict[str, Any]) -> dict[str, Any]:
+    metadata = _extract_response_metadata(raw_json)
+    if not isinstance(metadata, dict):
+        return {
+            "schema_version": 1,
+            "point_rows": [],
+            "state_point_rows": [],
+            "derived_request_rows": [],
+            "summary": {},
+        }
+
+    state_rows = _extract_state_point_timing_rows(metadata)
+    derived_rows = _extract_derived_request_timing_rows(metadata)
+    point_rows = [*state_rows, *derived_rows]
+    summary = _build_timing_summary(metadata, state_rows, derived_rows)
+
+    return {
+        "schema_version": 1,
+        "point_rows": point_rows,
+        "state_point_rows": state_rows,
+        "derived_request_rows": derived_rows,
+        "summary": summary,
+    }
+
+
+def _merge_timing_payloads(
+    primary: dict[str, Any],
+    secondary: dict[str, Any],
+) -> dict[str, Any]:
+    def _rows(payload: dict[str, Any], key: str) -> list[dict[str, Any]]:
+        rows = payload.get(key)
+        if isinstance(rows, list):
+            return [row for row in rows if isinstance(row, dict)]
+        return []
+
+    def _summary(payload: dict[str, Any]) -> dict[str, Any]:
+        summary = payload.get("summary")
+        if isinstance(summary, dict):
+            return summary
+        return {}
+
+    primary_state = _rows(primary, "state_point_rows")
+    secondary_state = _rows(secondary, "state_point_rows")
+    primary_derived = _rows(primary, "derived_request_rows")
+    secondary_derived = _rows(secondary, "derived_request_rows")
+
+    state_rows = primary_state if primary_state else secondary_state
+    derived_rows = primary_derived if primary_derived else secondary_derived
+    point_rows = [*state_rows, *derived_rows]
+
+    primary_summary = _summary(primary)
+    secondary_summary = _summary(secondary)
+    summary = dict(primary_summary)
+    for k, v in secondary_summary.items():
+        if k not in summary or summary[k] is None:
+            summary[k] = v
+
+    return {
+        "schema_version": 1,
+        "point_rows": point_rows,
+        "state_point_rows": state_rows,
+        "derived_request_rows": derived_rows,
+        "summary": summary,
+    }
+
+
 def parse_run(calc: Calculation) -> None:
     """
     Populate calc.data for MADNESS runs.
@@ -281,6 +635,13 @@ def parse_run(calc: Calculation) -> None:
     """
     json_path, style = _select_input_json(calc)
     if json_path is None:
+        meta_path = calc.artifacts.get("responses_metadata_json")
+        if isinstance(meta_path, Path) and meta_path.exists():
+            calc.meta["style"] = "responses_metadata"
+            calc.data["timings"] = _parse_madness_timings(_read_json(meta_path))
+            if calc.basis is None:
+                calc.basis = "mra"
+            calc.meta.setdefault("basis", calc.basis)
         return
 
     calc.meta["style"] = style
@@ -291,6 +652,13 @@ def parse_run(calc: Calculation) -> None:
 
     # Keep raw json as source of truth during migration
     calc.data["raw_json"] = _read_json(json_path)
+    calc.data["timings"] = _parse_madness_timings(calc.data["raw_json"])
+    meta_path = calc.artifacts.get("responses_metadata_json")
+    if isinstance(meta_path, Path) and meta_path.exists():
+        calc.data["timings"] = _merge_timing_payloads(
+            calc.data["timings"],
+            _parse_madness_timings(_read_json(meta_path)),
+        )
 
     # Basis label (MRA) inference.
     # Priority: paired input .in (MADQC) -> input.json -> parsed payload.

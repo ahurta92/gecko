@@ -14,6 +14,8 @@ from gecko.tables.extractors import (
     extract_dipole,
     extract_energy,
     extract_raman,
+    extract_timing_points,
+    extract_timing_summary,
 )
 
 
@@ -82,6 +84,18 @@ class TableBuilder:
         rows: list[dict[str, Any]] = []
         for calc in self.calcs:
             rows.extend(extract_raman(calc))
+        return pd.DataFrame(rows)
+
+    def build_timing_points(self) -> pd.DataFrame:
+        rows: list[dict[str, Any]] = []
+        for calc in self.calcs:
+            rows.extend(extract_timing_points(calc))
+        return pd.DataFrame(rows)
+
+    def build_timing_summary(self) -> pd.DataFrame:
+        rows: list[dict[str, Any]] = []
+        for calc in self.calcs:
+            rows.extend(extract_timing_summary(calc))
         return pd.DataFrame(rows)
 
     def compare_energy(

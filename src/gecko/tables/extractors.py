@@ -238,3 +238,99 @@ def extract_raman(calc: Calculation) -> list[dict[str, Any]]:
             )
 
     return rows
+
+
+def _to_float_or_none(value: Any) -> float | None:
+    try:
+        if value is None:
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _to_int_or_none(value: Any) -> int | None:
+    try:
+        if value is None:
+            return None
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _to_bool_or_none(value: Any) -> bool | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        lower = value.strip().lower()
+        if lower in ("true", "t", "yes", "y", "1"):
+            return True
+        if lower in ("false", "f", "no", "n", "0"):
+            return False
+    return None
+
+
+def extract_timing_points(calc: Calculation) -> list[dict[str, Any]]:
+    timings = calc.data.get("timings")
+    if not isinstance(timings, dict):
+        return []
+
+    point_rows = timings.get("point_rows")
+    if not isinstance(point_rows, list) or not point_rows:
+        return []
+
+    env = make_envelope(calc)
+    rows: list[dict[str, Any]] = []
+    for item in point_rows:
+        if not isinstance(item, dict):
+            continue
+        rows.append(
+            {
+                **env,
+                "timing_kind": str(item["timing_kind"])
+                if item.get("timing_kind") is not None
+                else None,
+                "state_id": str(item["state_id"]) if item.get("state_id") is not None else None,
+                "protocol": str(item["protocol"]) if item.get("protocol") is not None else None,
+                "frequency": _to_float_or_none(item.get("frequency")),
+                "cpu_seconds": _to_float_or_none(item.get("cpu_seconds")),
+                "wall_seconds": _to_float_or_none(item.get("wall_seconds")),
+                "converged": _to_bool_or_none(item.get("converged")),
+                "saved": _to_bool_or_none(item.get("saved")),
+                "restart_kind": str(item["restart_kind"])
+                if item.get("restart_kind") is not None
+                else None,
+                "restart_loaded_from_disk": _to_bool_or_none(
+                    item.get("restart_loaded_from_disk")
+                ),
+                "restart_promoted_from_static": _to_bool_or_none(
+                    item.get("restart_promoted_from_static")
+                ),
+                "restart_source_frequency": _to_float_or_none(
+                    item.get("restart_source_frequency")
+                ),
+                "restart_source_protocol": str(item["restart_source_protocol"])
+                if item.get("restart_source_protocol") is not None
+                else None,
+                "derived_state_id": str(item["derived_state_id"])
+                if item.get("derived_state_id") is not None
+                else None,
+                "owner_group": _to_int_or_none(item.get("owner_group")),
+                "success": _to_bool_or_none(item.get("success")),
+            }
+        )
+    return rows
+
+
+def extract_timing_summary(calc: Calculation) -> list[dict[str, Any]]:
+    timings = calc.data.get("timings")
+    if not isinstance(timings, dict):
+        return []
+    summary = timings.get("summary")
+    if not isinstance(summary, dict) or not summary:
+        return []
+    return [{**make_envelope(calc), **summary}]

@@ -416,6 +416,14 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--madness-bin",
+        default=os.environ.get("MADQC_BIN", "madqc"),
+        help=(
+            "MADNESS executable to run (default: MADQC_BIN env var or 'madqc'). "
+            "Can be absolute path."
+        ),
+    )
+    parser.add_argument(
         "--optimize-input",
         default="optimize.dal",
         help="DALTON optimize input filename in each basis dir (default: optimize.dal)",
@@ -515,6 +523,11 @@ def main() -> None:
     if not args.skip_dalton and not run_dal_script.exists():
         raise SystemExit(f"DALTON submission script not found: {run_dal_script}")
 
+    if not args.skip_madness and "/" in args.madness_bin:
+        madness_bin_path = Path(args.madness_bin).expanduser()
+        if not madness_bin_path.exists():
+            raise SystemExit(f"MADNESS executable not found: {madness_bin_path}")
+
     load_calc = _bootstrap_gecko(args.gecko_src, Path(__file__))
 
     selected = set(args.molecules) if args.molecules else None
@@ -563,7 +576,7 @@ def main() -> None:
                             molecule=mol,
                             basis=args.mra_dir,
                             run_dir=mra_dir,
-                            cmd=["bash", str(run_mad_script), mad_input.name],
+                            cmd=["bash", str(run_mad_script), mad_input.name, args.madness_bin],
                             reason=reason,
                         )
                     )

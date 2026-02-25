@@ -47,6 +47,10 @@ def _discover_artifacts(root: Path) -> dict[str, Path]:
     resp_meta = root / "responses" / "metadata.json"
     if resp_meta.exists():
         artifacts["responses_metadata_json"] = resp_meta
+    else:
+        legacy_resp_meta = root / "response_metadata.json"
+        if legacy_resp_meta.exists():
+            artifacts["responses_metadata_json"] = legacy_resp_meta
 
     # Legacy molresponse markers
     # Prefer output.json, but accept outputs.json (older databases).
