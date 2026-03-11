@@ -17,6 +17,7 @@ import json
 import io
 import os
 import re
+import time
 from types import SimpleNamespace
 from functools import lru_cache
 from pathlib import Path
@@ -102,6 +103,18 @@ _GEOM_MAP_PATH: Path | None = None
 _BUNDLE_DIR: Path | None = None
 _WRITE_BUNDLE_DIR: Path | None = None
 
+_GLOBAL_BREAKDOWN_MAX_ROWS = 300
+_GLOBAL_TREND_PERCENTILE = 95.0
+_GLOBAL_CLUSTER_MAX = 8
+
+GLOBAL_DASH_METRIC_CHOICES: List[Tuple[str, str]] = [
+    ("L2 relative error (rel_L2)", "rel_L2"),
+    ("Mean signed parallel-relative error", "mean_par_rel_signed"),
+    ("P95 signed parallel-relative error", "p95_par_rel_signed"),
+    ("Mean angle [deg]", "mean_ang"),
+    ("P95 angle [deg]", "p95_ang"),
+]
+
 
 @lru_cache(maxsize=1)
 def _shg_long():
@@ -176,7 +189,10 @@ def _beta_df_to_np(beta_df) -> np.ndarray:
 
 
 def _tensor_from_long(shg_long, mol: str, basis: str, omega: float | int) -> np.ndarray:
-    tensor = _tensor_from_long_impl(shg_long, mol, basis, omega)
+    key = (str(mol), str(basis), float(omega))
+    tensor = _tensor_lookup().get(key)
+    if tensor is None:
+        tensor = _tensor_from_long_impl(shg_long, mol, basis, omega)
     if not np.any(tensor):
         _dprint(f"[shg] Missing tensor for (mol={mol}, basis={basis}, omega={omega}); using zeros")
     return tensor
@@ -198,6 +214,39 @@ def _data():
         return df
 
     return _shg_long()
+
+
+@lru_cache(maxsize=1)
+def _tensor_lookup() -> Dict[Tuple[str, str, float], np.ndarray]:
+    df = _data()
+    required = {"molecule", "basis", "omega", "ijk", "Beta"}
+    if not required.issubset(set(df.columns)):
+        return {}
+
+    cols = df[["molecule", "basis", "omega", "ijk", "Beta"]].dropna(
+        subset=["molecule", "basis", "omega", "ijk"]
+    )
+
+    lookup: Dict[Tuple[str, str, float], np.ndarray] = {}
+    for (mol, basis, omega), group in cols.groupby(
+        ["molecule", "basis", "omega"], sort=False
+    ):
+        series = {
+            str(ijk): beta
+            for ijk, beta in zip(group["ijk"], group["Beta"], strict=False)
+        }
+        lookup[(str(mol), str(basis), float(omega))] = _beta_df_to_np(series)
+    return lookup
+
+
+def _active_data_source_label() -> str:
+    if _SHG_DB_DIR is not None:
+        return f"db:{_SHG_DB_DIR}"
+    if _BUNDLE_DIR is not None:
+        return f"bundle:{_BUNDLE_DIR}"
+    if _SHG_CSV_PATH is not None:
+        return f"csv:{_SHG_CSV_PATH}"
+    return "csv:data/csv_data/shg_ijk.csv"
 
 
 @lru_cache(maxsize=256)
@@ -443,17 +492,27 @@ state.setdefault("last_error", "")
 
 def _basis_list() -> List[str]:
     df = _data()
+    if "basis" not in df.columns:
+        return []
     return sorted(set(str(x) for x in df["basis"].unique()))
 
 
 def _molecule_list() -> List[str]:
     df = _data()
+    if "molecule" not in df.columns:
+        return []
     return sorted(set(str(x) for x in df["molecule"].unique()))
 
 
 def _omega_list(mol: str) -> List[float]:
     df = _data()
-    return sorted(set((float(x) for x in df.omega.unique())))
+    if "molecule" in df.columns and "omega" in df.columns:
+        sub = df[df["molecule"] == str(mol)]
+        if not sub.empty:
+            return sorted(set(float(x) for x in sub["omega"].unique()))
+    if "omega" not in df.columns:
+        return []
+    return sorted(set(float(x) for x in df["omega"].unique()))
 
 
 METRIC_CHOICES = _METRIC_CHOICES
@@ -630,6 +689,93 @@ PLOT_METRIC_CHOICES: List[Tuple[str, str]] = [
 ]
 
 
+def _safe_weighted_mean(x: np.ndarray, w: np.ndarray) -> float:
+    x = np.asarray(x, dtype=float).reshape(-1)
+    w = np.asarray(w, dtype=float).reshape(-1)
+    if x.size != w.size or x.size == 0:
+        return float("nan")
+    finite = np.isfinite(x) & np.isfinite(w)
+    if not np.any(finite):
+        return float("nan")
+    return float(np.sum(w[finite] * x[finite]) / (4.0 * np.pi))
+
+
+def _safe_weighted_l2(x: np.ndarray, w: np.ndarray) -> float:
+    x = np.asarray(x, dtype=float).reshape(-1)
+    w = np.asarray(w, dtype=float).reshape(-1)
+    if x.size != w.size or x.size == 0:
+        return float("nan")
+    finite = np.isfinite(x) & np.isfinite(w)
+    if not np.any(finite):
+        return float("nan")
+    val = float(np.sum(w[finite] * (x[finite] ** 2)) / (4.0 * np.pi))
+    return float(np.sqrt(max(0.0, val)))
+
+
+def _derived_error_metrics(arrays: Dict[str, np.ndarray], w: np.ndarray) -> Dict[str, float]:
+    rel_err = np.asarray(arrays.get("rel_err", np.asarray([])), dtype=float)
+    par_abs = np.asarray(arrays.get("par_abs", np.asarray([])), dtype=float)
+    abs_err = np.asarray(arrays.get("abs_err", np.asarray([])), dtype=float)
+    ref_mag = np.asarray(arrays.get("ref_mag", np.asarray([])), dtype=float)
+    ang_err = np.asarray(arrays.get("ang_err", np.asarray([])), dtype=float)
+    par_rel_signed = np.asarray(arrays.get("par_rel_signed", np.asarray([])), dtype=float)
+    dv_tan = np.asarray(arrays.get("dv_tan", np.asarray([])), dtype=float)
+
+    rel_finite = rel_err[np.isfinite(rel_err)]
+    ang_finite = ang_err[np.isfinite(ang_err)]
+    par_rel_finite = par_rel_signed[np.isfinite(par_rel_signed)]
+
+    rel_l2 = float("nan")
+    ref_l2 = _safe_weighted_l2(ref_mag, w)
+    err_l2 = _safe_weighted_l2(abs_err, w)
+    if np.isfinite(ref_l2) and ref_l2 > 0 and np.isfinite(err_l2):
+        rel_l2 = float(err_l2 / ref_l2)
+
+    l2_par = _safe_weighted_l2(par_abs, w)
+    if dv_tan.size:
+        l2_perp = _safe_weighted_l2(dv_tan, w)
+    else:
+        if np.isfinite(err_l2) and np.isfinite(l2_par):
+            l2_perp = float(np.sqrt(max(err_l2 * err_l2 - l2_par * l2_par, 0.0)))
+        else:
+            l2_perp = float("nan")
+
+    ratio_perp_par = float("nan")
+    if np.isfinite(l2_par) and l2_par > 0 and np.isfinite(l2_perp):
+        ratio_perp_par = float(l2_perp / l2_par)
+
+    if "mask" in arrays:
+        mask = np.asarray(arrays["mask"], dtype=float).reshape(-1) > 0.5
+        masked_rel = rel_err[mask] if rel_err.size == mask.size else np.asarray([])
+        masked_w = np.asarray(w, dtype=float).reshape(-1)[mask] if rel_err.size == mask.size else np.asarray([])
+        masked_rel_l2 = _safe_weighted_l2(masked_rel, masked_w)
+    else:
+        masked_rel_l2 = _safe_weighted_l2(rel_err, w)
+
+    bias_ratio = float("nan")
+    if par_rel_finite.size:
+        pos = np.mean(par_rel_finite[par_rel_finite > 0]) if np.any(par_rel_finite > 0) else np.nan
+        neg = np.mean(np.abs(par_rel_finite[par_rel_finite < 0])) if np.any(par_rel_finite < 0) else np.nan
+        if np.isfinite(pos) and np.isfinite(neg) and neg > 0:
+            bias_ratio = float(pos / neg)
+
+    out = {
+        "rel_L2": rel_l2,
+        "L2_par": l2_par,
+        "L2_perp": l2_perp,
+        "ratio_perp_par": ratio_perp_par,
+        "max_rel": float(np.max(rel_finite)) if rel_finite.size else float("nan"),
+        "p95_rel": float(np.percentile(rel_finite, 95)) if rel_finite.size else float("nan"),
+        "mean_ang": _safe_weighted_mean(ang_err, w),
+        "p95_ang": float(np.percentile(ang_finite, 95)) if ang_finite.size else float("nan"),
+        "bias_ratio": bias_ratio,
+        "masked_rel_L2": masked_rel_l2,
+        "mean_par_rel_signed": _safe_weighted_mean(par_rel_signed, w),
+        "p95_par_rel_signed": float(np.percentile(par_rel_finite, 95)) if par_rel_finite.size else float("nan"),
+    }
+    return out
+
+
 def _posneg_l2_from_signed_field(x: np.ndarray, w: np.ndarray) -> Tuple[float, float]:
     """Return (L2_positive, L2_negative) for a signed field over the sphere.
 
@@ -668,6 +814,9 @@ def _metric_plot_value(
     key = str(metric_key)
     if key in metrics:
         return float(metrics[key])
+    derived = _derived_error_metrics(arrays, w)
+    if key in derived:
+        return float(derived[key])
     if key == "mean_par_rel_signed":
         x = np.asarray(arrays["par_rel_signed"], dtype=float)
         return float(np.sum(w * x) / (4.0 * np.pi))
@@ -1390,6 +1539,261 @@ def _update_metric_plot() -> None:
         state.metric_plot_error = f"Plot error: {type(exc).__name__}: {exc}"
 
 
+@lru_cache(maxsize=1)
+def _available_tensor_keys() -> set[Tuple[str, str, float]]:
+    return set(_tensor_lookup().keys())
+
+
+def _has_tensor(mol: str, basis: str, omega: float | int) -> bool:
+    return (str(mol), str(basis), float(omega)) in _available_tensor_keys()
+
+
+@lru_cache(maxsize=4096)
+def _pair_metric_summary(
+    mol: str,
+    basis: str,
+    ref_basis: str,
+    omega: float,
+    lebedev_order: int,
+    coord_system: str,
+    rel_norm: str,
+) -> Dict[str, float]:
+    if str(basis) == str(ref_basis):
+        return {}
+    if not _has_tensor(mol, ref_basis, omega):
+        return {}
+    if not _has_tensor(mol, basis, omega):
+        return {}
+
+    grid = load_lebedev_grid(int(lebedev_order))
+    df = _data()
+    beta_ref = _tensor_from_long(df, mol, ref_basis, float(omega))
+    beta_bas = _tensor_from_long(df, mol, basis, float(omega))
+
+    R = None
+    if coord_system == "principal_axes":
+        mol_obj = _load_molecule(mol)
+        R = _principal_axes_rotation(mol_obj)
+        beta_ref = _rotate_beta(beta_ref, R)
+        beta_bas = _rotate_beta(beta_bas, R)
+
+    n_hat = np.asarray(grid.n_hat, dtype=float)
+    w = np.asarray(grid.w, dtype=float)
+    v_ref = evaluate_field(beta_ref, n_hat)
+    v_bas = evaluate_field(beta_bas, n_hat)
+
+    settings = ErrorSettings(
+        enable_mask=True,
+        mask_threshold_fraction=0.01,
+        component_metrics=True,
+        radial_tangential_metrics=True,
+        rel_norm=str(rel_norm),
+    )
+    arrays, metrics = compute_error_fields(v_ref, v_bas, n_hat, w, settings=settings)
+    out = dict(metrics)
+    out.update(_derived_error_metrics(arrays, w))
+    return out
+
+
+def _build_global_rows(
+    *,
+    metric_key: str,
+    ref_basis: str,
+    omega: float,
+    lebedev_order: int,
+    coord_system: str,
+    rel_norm: str,
+) -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    for mol in _molecule_list():
+        if not _has_tensor(str(mol), str(ref_basis), float(omega)):
+            continue
+        for basis in _basis_list():
+            if str(basis) == str(ref_basis):
+                continue
+            summary = _pair_metric_summary(
+                str(mol),
+                str(basis),
+                str(ref_basis),
+                float(omega),
+                int(lebedev_order),
+                str(coord_system),
+                str(rel_norm),
+            )
+            if not summary:
+                continue
+            value = float(summary.get(str(metric_key), float("nan")))
+            if not np.isfinite(value):
+                continue
+            family, cardinal = _basis_family_and_cardinal(str(basis))
+            rows.append(
+                {
+                    "molecule": str(mol),
+                    "basis": str(basis),
+                    "family": str(family) if family is not None else "other",
+                    "cardinal": str(cardinal) if cardinal is not None else "-",
+                    "omega": float(omega),
+                    "metric_value": value,
+                }
+            )
+    return rows
+
+
+def _kmeans_labels(X: np.ndarray, k: int, *, max_iter: int = 50) -> np.ndarray:
+    X = np.asarray(X, dtype=float)
+    n = int(X.shape[0])
+    if n == 0:
+        return np.asarray([], dtype=int)
+    k = max(1, min(int(k), n))
+    # Deterministic initialization: evenly spaced row picks.
+    seed_idx = np.linspace(0, n - 1, k, dtype=int)
+    centers = X[seed_idx, :].copy()
+
+    labels = np.zeros(n, dtype=int)
+    for _ in range(max_iter):
+        d2 = np.sum((X[:, None, :] - centers[None, :, :]) ** 2, axis=2)
+        new_labels = np.argmin(d2, axis=1).astype(int)
+        if np.array_equal(new_labels, labels):
+            break
+        labels = new_labels
+        for cid in range(k):
+            mask = labels == cid
+            if np.any(mask):
+                centers[cid, :] = np.mean(X[mask, :], axis=0)
+    return labels
+
+
+def _assign_molecule_clusters(rows: List[Dict[str, Any]], *, cluster_k: int) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    if not rows:
+        return rows, []
+
+    molecules = sorted(set(str(r["molecule"]) for r in rows))
+    basis_order = sorted(set(str(r["basis"]) for r in rows))
+    by_mol_basis: Dict[Tuple[str, str], float] = {
+        (str(r["molecule"]), str(r["basis"])): float(r["metric_value"]) for r in rows
+    }
+
+    X = np.full((len(molecules), len(basis_order)), np.nan, dtype=float)
+    for i, mol in enumerate(molecules):
+        for j, basis in enumerate(basis_order):
+            if (mol, basis) in by_mol_basis:
+                X[i, j] = float(by_mol_basis[(mol, basis)])
+
+    col_mean = np.nanmean(X, axis=0)
+    col_mean = np.where(np.isfinite(col_mean), col_mean, 0.0)
+    inds = np.where(~np.isfinite(X))
+    if inds[0].size:
+        X[inds] = col_mean[inds[1]]
+    col_std = np.std(X, axis=0)
+    col_std = np.where(col_std > 0, col_std, 1.0)
+    Xz = (X - np.mean(X, axis=0)) / col_std
+
+    labels = _kmeans_labels(Xz, int(cluster_k))
+    cluster_map = {mol: int(labels[i]) + 1 for i, mol in enumerate(molecules)}
+
+    out_rows: List[Dict[str, Any]] = []
+    for row in rows:
+        row2 = dict(row)
+        cid = cluster_map.get(str(row["molecule"]), 1)
+        row2["cluster"] = f"C{cid}"
+        out_rows.append(row2)
+
+    cluster_rows: List[Dict[str, Any]] = []
+    for cid in sorted(set(cluster_map.values())):
+        mols = [m for m, c in cluster_map.items() if c == cid]
+        vals = [float(r["metric_value"]) for r in rows if str(r["molecule"]) in mols]
+        metric_mean = float(np.mean(vals)) if vals else float("nan")
+        cluster_rows.append(
+            {
+                "cluster": f"C{cid}",
+                "molecules": len(mols),
+                "mean_metric": metric_mean,
+            }
+        )
+    return out_rows, cluster_rows
+
+
+def _global_trend_plot_data_url(rows: List[Dict[str, Any]], *, metric_key: str) -> str:
+    if not rows:
+        return ""
+    try:
+        import matplotlib
+
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except Exception:
+        return ""
+
+    grouped: Dict[Tuple[str, str], List[float]] = {}
+    for row in rows:
+        fam = str(row.get("family", "other"))
+        card = str(row.get("cardinal", "-"))
+        grouped.setdefault((fam, card), []).append(float(row["metric_value"]))
+
+    x_positions: Dict[Tuple[str, str], float] = {}
+    tick_pos: List[float] = []
+    tick_lab: List[str] = []
+    family_centers: Dict[str, float] = {}
+    x = 0.0
+    gap = 0.8
+    step = 1.0
+    for fam in _PLOT_FAMILY_ORDER:
+        start = x
+        for card in _PLOT_CARD_ORDER:
+            x_positions[(fam, card)] = x
+            tick_pos.append(x)
+            tick_lab.append(card)
+            x += step
+        end = x - step
+        family_centers[fam] = 0.5 * (start + end)
+        x += gap
+
+    fig, ax = plt.subplots(figsize=(9.0, 3.9), dpi=160)
+    for fam in _PLOT_FAMILY_ORDER:
+        xs: List[float] = []
+        ys: List[float] = []
+        yerr: List[float] = []
+        for card in _PLOT_CARD_ORDER:
+            vals = np.asarray(grouped.get((fam, card), []), dtype=float)
+            vals = vals[np.isfinite(vals)]
+            if vals.size == 0:
+                continue
+            xs.append(float(x_positions[(fam, card)]))
+            ys.append(float(np.mean(vals)))
+            yerr.append(float(np.std(vals)))
+        if xs:
+            ax.errorbar(xs, ys, yerr=yerr, fmt="o-", capsize=3, linewidth=1.5, label=fam)
+
+    ax.set_xticks(tick_pos)
+    ax.set_xticklabels(tick_lab)
+    if tick_pos:
+        ax.set_xlim(min(tick_pos) - 0.5, max(tick_pos) + 0.5)
+    vals_all = np.asarray([float(r["metric_value"]) for r in rows], dtype=float)
+    vals_all = vals_all[np.isfinite(vals_all)]
+    if vals_all.size:
+        ymax = float(np.percentile(np.abs(vals_all), _GLOBAL_TREND_PERCENTILE))
+        if ymax > 0:
+            if np.nanmin(vals_all) < 0:
+                ax.set_ylim(-1.1 * ymax, 1.1 * ymax)
+            else:
+                ax.set_ylim(0.0, 1.1 * ymax)
+    ax.grid(True, axis="y", alpha=0.25)
+    ax.set_ylabel(metric_key)
+    ax.legend(loc="best", fontsize=8)
+    if tick_pos:
+        ylim = ax.get_ylim()
+        y_text = ylim[1]
+        for fam, cx in family_centers.items():
+            ax.text(cx, y_text, fam, ha="center", va="bottom", fontsize=8)
+
+    fig.tight_layout()
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight")
+    plt.close(fig)
+    data = base64.b64encode(buf.getvalue()).decode("ascii")
+    return f"data:image/png;base64,{data}"
+
+
 state.setdefault("mol", "H2O")
 state.setdefault("omega", 0.0)
 state.setdefault("ref_basis", "MRA")
@@ -1419,6 +1823,46 @@ state.setdefault(
         {"text": "B", "value": "b"},
     ],
 )
+state.setdefault("dataset_db_dir", str(_SHG_DB_DIR) if _SHG_DB_DIR is not None else "")
+state.setdefault("active_data_source", _active_data_source_label())
+state.setdefault("dataset_status", "ready")
+state.setdefault("dataset_status_color", "blue")
+state.setdefault("dashboard_assumptions", "")
+state.setdefault("molecule_items", _molecule_list())
+state.setdefault("basis_items", _basis_list())
+state.setdefault("omega_items", _omega_list(str(state.mol)))
+state.setdefault("global_metric", "rel_L2")
+state.setdefault("global_cluster_k", 3)
+state.setdefault("global_auto_update", False)
+state.setdefault("global_stale_note", "")
+state.setdefault("global_last_runtime", "")
+state.setdefault("global_kpi_molecules", "0")
+state.setdefault("global_kpi_comparisons", "0")
+state.setdefault("global_kpi_mean", "n/a")
+state.setdefault("global_kpi_worst", "n/a")
+state.setdefault("global_trend_src", "")
+state.setdefault("global_trend_error", "")
+state.setdefault("global_breakdown_rows", [])
+state.setdefault(
+    "global_breakdown_headers",
+    [
+        {"text": "Molecule", "value": "molecule"},
+        {"text": "Basis", "value": "basis"},
+        {"text": "Metric", "value": "metric_value"},
+        {"text": "Cluster", "value": "cluster"},
+        {"text": "Family", "value": "family"},
+        {"text": "Cardinal", "value": "cardinal"},
+    ],
+)
+state.setdefault(
+    "global_cluster_headers",
+    [
+        {"text": "Cluster", "value": "cluster"},
+        {"text": "Molecules", "value": "molecules"},
+        {"text": "Mean metric", "value": "mean_metric"},
+    ],
+)
+state.setdefault("global_cluster_rows", [])
 
 
 @state.change("show_axes")
@@ -1428,6 +1872,179 @@ def _on_show_axes(show_axes, **_):
     _scene_mid["axes_actor"].SetVisibility(1 if vis else 0)
     _scene_right["axes_actor"].SetVisibility(1 if vis else 0)
     ctrl.view_update()
+
+
+def _clear_cached_data_views() -> None:
+    for fn in (
+        _shg_long,
+        _geometry_map,
+        _data,
+        _tensor_lookup,
+        _available_tensor_keys,
+        _load_molecule,
+        _tensor_from_long,
+        _global_metric_clims,
+        _posneg_par_rel_signed_across_bases,
+        _posneg_par_rel_signed_across_omegas_for_basis,
+        _metric_values_across_bases,
+        _metric_values_across_omegas_for_basis,
+        _metric_plot_data_url,
+        _triple_metric_plot_data_url,
+        _pair_metric_summary,
+    ):
+        try:
+            fn.cache_clear()
+        except Exception:
+            pass
+
+
+def _refresh_selector_items() -> None:
+    state.molecule_items = _molecule_list()
+    state.basis_items = _basis_list()
+    if state.molecule_items and str(state.mol) not in set(state.molecule_items):
+        state.mol = str(state.molecule_items[0])
+    omegas = _omega_list(str(state.mol))
+    state.omega_items = [float(x) for x in omegas]
+    if omegas and float(state.omega) not in {float(x) for x in omegas}:
+        state.omega = float(omegas[0])
+
+
+def _metric_rank_value(metric_key: str, metric_value: float) -> float:
+    if not np.isfinite(metric_value):
+        return float("-inf")
+    if str(metric_key) in ("mean_par_rel_signed", "p95_par_rel_signed"):
+        return float(abs(metric_value))
+    return float(metric_value)
+
+
+def _update_global_dashboard() -> None:
+    t0 = time.perf_counter()
+    state.global_stale_note = ""
+    metric_key = str(state.global_metric)
+    rows: List[Dict[str, Any]] = []
+    try:
+        rows = _build_global_rows(
+            metric_key=metric_key,
+            ref_basis=str(state.ref_basis),
+            omega=float(state.omega),
+            lebedev_order=int(state.lebedev_order),
+            coord_system=str(state.coord_system),
+            rel_norm=str(state.rel_norm),
+        )
+    except Exception as exc:
+        state.global_kpi_molecules = "0"
+        state.global_kpi_comparisons = "0"
+        state.global_kpi_mean = "n/a"
+        state.global_kpi_worst = "n/a"
+        state.global_trend_src = ""
+        state.global_trend_error = f"Global dashboard error: {type(exc).__name__}: {exc}"
+        state.global_breakdown_rows = []
+        state.global_cluster_rows = []
+        state.global_last_runtime = f"{(time.perf_counter() - t0):.2f}s"
+        return
+
+    if not rows:
+        state.global_kpi_molecules = "0"
+        state.global_kpi_comparisons = "0"
+        state.global_kpi_mean = "n/a"
+        state.global_kpi_worst = "n/a"
+        state.global_trend_src = ""
+        state.global_trend_error = "No comparisons available for current selections."
+        state.global_breakdown_rows = []
+        state.global_cluster_rows = []
+        state.dashboard_assumptions = (
+            "Assumptions: global view uses the selected omega only; clustering is heuristic k-means on "
+            "per-molecule basis-metric vectors with missing entries imputed by basis-wise means."
+        )
+        state.global_last_runtime = f"{(time.perf_counter() - t0):.2f}s"
+        return
+
+    rows, cluster_rows = _assign_molecule_clusters(
+        rows,
+        cluster_k=max(1, min(int(state.global_cluster_k), _GLOBAL_CLUSTER_MAX)),
+    )
+    vals = np.asarray([float(r["metric_value"]) for r in rows], dtype=float)
+    vals = vals[np.isfinite(vals)]
+    molecules = sorted(set(str(r["molecule"]) for r in rows))
+
+    state.global_kpi_molecules = str(len(molecules))
+    state.global_kpi_comparisons = str(len(rows))
+    state.global_kpi_mean = f"{float(np.mean(vals)):.4g}" if vals.size else "n/a"
+
+    worst = max(rows, key=lambda r: _metric_rank_value(metric_key, float(r["metric_value"])))
+    state.global_kpi_worst = f"{worst['molecule']} / {worst['basis']} ({float(worst['metric_value']):.4g})"
+
+    try:
+        state.global_trend_src = _global_trend_plot_data_url(rows, metric_key=metric_key)
+        state.global_trend_error = "" if state.global_trend_src else "Trend plot unavailable (missing matplotlib?)"
+    except Exception as exc:
+        state.global_trend_src = ""
+        state.global_trend_error = f"Trend plot error: {type(exc).__name__}: {exc}"
+
+    ranked = sorted(
+        rows,
+        key=lambda r: _metric_rank_value(metric_key, float(r["metric_value"])),
+        reverse=True,
+    )
+    state.global_breakdown_rows = ranked[:_GLOBAL_BREAKDOWN_MAX_ROWS]
+    state.global_cluster_rows = cluster_rows
+    state.dashboard_assumptions = (
+        "Assumptions: global metric rows use selected omega and reference basis; clustering is a simple "
+        "k-means grouping on per-molecule basis-metric vectors (easy to replace with domain-specific models)."
+    )
+    state.global_last_runtime = f"{(time.perf_counter() - t0):.2f}s"
+
+
+def _maybe_update_global_dashboard(*, force: bool = False) -> None:
+    if force or bool(state.global_auto_update):
+        _update_global_dashboard()
+        return
+    state.global_stale_note = "Global dashboard paused for responsiveness. Click Refresh Global."
+
+
+def _refresh_global_dashboard() -> None:
+    _update_global_dashboard()
+
+
+ctrl.refresh_global_dashboard = _refresh_global_dashboard
+
+
+def _load_dataset_db() -> None:
+    global _SHG_DB_DIR
+    global _SHG_CSV_PATH
+    global _BUNDLE_DIR
+    global _GEOM_MAP_PATH
+
+    raw = str(state.dataset_db_dir).strip()
+    if not raw:
+        state.dataset_status = "Enter a database directory path."
+        state.dataset_status_color = "red"
+        return
+    db_dir = Path(raw).expanduser().resolve()
+    if not db_dir.exists() or not db_dir.is_dir():
+        state.dataset_status = f"Invalid directory: {db_dir}"
+        state.dataset_status_color = "red"
+        return
+
+    try:
+        _SHG_DB_DIR = db_dir
+        _SHG_CSV_PATH = None
+        _BUNDLE_DIR = None
+        _GEOM_MAP_PATH = None
+        _clear_cached_data_views()
+        _refresh_selector_items()
+        _ensure_basis_selections()
+        state.active_data_source = _active_data_source_label()
+        state.dataset_status = f"Loaded DB: {db_dir}"
+        state.dataset_status_color = "green"
+        _rebuild_both()
+        _maybe_update_global_dashboard(force=False)
+    except Exception as exc:
+        state.dataset_status = f"Load failed: {type(exc).__name__}: {exc}"
+        state.dataset_status_color = "red"
+
+
+ctrl.load_dataset_db = _load_dataset_db
 
 
 def _ensure_basis_selections() -> None:
@@ -1594,6 +2211,8 @@ def _compute_bundle():
 
     arrays_a, metrics_a = compute_error_fields(v_ref, v_a, n_hat, w, settings=settings)
     arrays_b, metrics_b = compute_error_fields(v_ref, v_b, n_hat, w, settings=settings)
+    metrics_a = {**metrics_a, **_derived_error_metrics(arrays_a, w)}
+    metrics_b = {**metrics_b, **_derived_error_metrics(arrays_b, w)}
 
     return n_hat, w, v_ref, v_a, v_b, arrays_a, arrays_b, metrics_a, metrics_b, R
 
@@ -1807,7 +2426,8 @@ def _rebuild_both() -> None:
 def _on_mol_change(mol, **_):
     global _camera_initialized
     omegas = _omega_list(mol)
-    if omegas and float(state.omega) not in omegas:
+    state.omega_items = [float(x) for x in omegas]
+    if omegas and float(state.omega) not in {float(x) for x in omegas}:
         state.omega = float(omegas[0])
     _camera_initialized = False
     _rebuild_both()
@@ -1830,6 +2450,25 @@ def _on_mol_change(mol, **_):
 )
 def _on_params_change(**_):
     _rebuild_both()
+
+
+@state.change(
+    "omega",
+    "ref_basis",
+    "lebedev_order",
+    "coord_system",
+    "rel_norm",
+    "global_metric",
+    "global_cluster_k",
+)
+def _on_global_dashboard_params_change(**_):
+    _maybe_update_global_dashboard(force=False)
+
+
+@state.change("global_auto_update")
+def _on_global_auto_update(global_auto_update, **_):
+    if bool(global_auto_update):
+        _update_global_dashboard()
 
 
 @state.change("posneg_yscale")
@@ -1858,6 +2497,29 @@ def _metrics_table():
         hide_default_footer=True,
         items=("metric_rows", []),
         headers=("metric_headers", []),
+    )
+
+
+def _global_breakdown_table():
+    vuetify.VDataTable(
+        dense=True,
+        disable_pagination=False,
+        hide_default_footer=False,
+        items=("global_breakdown_rows", []),
+        headers=("global_breakdown_headers", []),
+        items_per_page=12,
+        classes="mb-2",
+    )
+
+
+def _global_cluster_table():
+    vuetify.VDataTable(
+        dense=True,
+        disable_pagination=True,
+        hide_default_footer=True,
+        items=("global_cluster_rows", []),
+        headers=("global_cluster_headers", []),
+        classes="mb-2",
     )
 
 
@@ -1890,10 +2552,48 @@ with SinglePageWithDrawerLayout(server) as layout:
             classes="mb-2",
         )
 
+        vuetify.VSubheader("Dataset")
+        vuetify.VTextField(
+            label="Database directory",
+            v_model=("dataset_db_dir", state.dataset_db_dir),
+            dense=True,
+            outlined=True,
+            hide_details=True,
+            placeholder="/path/to/database/root",
+            classes="mb-1",
+        )
+        with vuetify.VRow(no_gutters=True, classes="mb-2"):
+            with vuetify.VCol(cols=7, classes="pr-1"):
+                vuetify.VChip(
+                    "{{ dataset_status }}",
+                    small=True,
+                    outlined=True,
+                    color=("dataset_status_color", "blue"),
+                )
+            with vuetify.VCol(cols=5, classes="pl-1"):
+                vuetify.VBtn(
+                    "Load DB",
+                    small=True,
+                    block=True,
+                    color="primary",
+                    click=ctrl.load_dataset_db,
+                )
+        vuetify.VTextField(
+            label="Active source",
+            v_model=("active_data_source", state.active_data_source),
+            dense=True,
+            outlined=True,
+            hide_details=True,
+            readonly=True,
+            classes="mb-2",
+        )
+        vuetify.VDivider(classes="my-2")
+        vuetify.VSubheader("Sphere Controls")
+
         vuetify.VSelect(
             label="Molecule",
             v_model=("mol", state.mol),
-            items=("molecule_items", _molecule_list()),
+            items=("molecule_items", state.molecule_items),
             dense=True,
             outlined=True,
             hide_details=True,
@@ -1944,7 +2644,7 @@ with SinglePageWithDrawerLayout(server) as layout:
         vuetify.VSelect(
             label="Omega",
             v_model=("omega", state.omega),
-            items=("omega_items", _omega_list(state.mol)),
+            items=("omega_items", state.omega_items),
             dense=True,
             outlined=True,
             hide_details=True,
@@ -1953,7 +2653,7 @@ with SinglePageWithDrawerLayout(server) as layout:
         vuetify.VSelect(
             label="Reference basis",
             v_model=("ref_basis", state.ref_basis),
-            items=("basis_items", _basis_list()),
+            items=("basis_items", state.basis_items),
             dense=True,
             outlined=True,
             hide_details=True,
@@ -1962,7 +2662,7 @@ with SinglePageWithDrawerLayout(server) as layout:
         vuetify.VSelect(
             label="Basis A",
             v_model=("bas_basis_a", state.bas_basis_a),
-            items=("basis_items", _basis_list()),
+            items=("basis_items", state.basis_items),
             dense=True,
             outlined=True,
             hide_details=True,
@@ -1971,7 +2671,7 @@ with SinglePageWithDrawerLayout(server) as layout:
         vuetify.VSelect(
             label="Basis B",
             v_model=("bas_basis_b", state.bas_basis_b),
-            items=("basis_items", _basis_list()),
+            items=("basis_items", state.basis_items),
             dense=True,
             outlined=True,
             hide_details=True,
@@ -2026,6 +2726,53 @@ with SinglePageWithDrawerLayout(server) as layout:
             classes="mb-2",
         )
 
+        vuetify.VDivider(classes="my-2")
+        vuetify.VSubheader("Global Dashboard")
+        vuetify.VSelect(
+            label="Global metric",
+            v_model=("global_metric", state.global_metric),
+            items=("global_metric_items", [{"text": t, "value": v} for t, v in GLOBAL_DASH_METRIC_CHOICES]),
+            dense=True,
+            outlined=True,
+            hide_details=True,
+            classes="mb-2",
+        )
+        vuetify.VSlider(
+            label="Molecule clusters (heuristic)",
+            v_model=("global_cluster_k", state.global_cluster_k),
+            min=1,
+            max=_GLOBAL_CLUSTER_MAX,
+            step=1,
+            dense=True,
+            hide_details=True,
+            classes="mb-2",
+        )
+        vuetify.VCheckbox(
+            label="Auto-update global dashboard (slower)",
+            v_model=("global_auto_update", state.global_auto_update),
+            dense=True,
+            hide_details=True,
+            classes="mb-1",
+        )
+        with vuetify.VRow(no_gutters=True, classes="mb-2"):
+            with vuetify.VCol(cols=7, classes="pr-1"):
+                vuetify.VTextField(
+                    label="Global runtime",
+                    v_model=("global_last_runtime", state.global_last_runtime),
+                    dense=True,
+                    outlined=True,
+                    hide_details=True,
+                    readonly=True,
+                )
+            with vuetify.VCol(cols=5, classes="pl-1"):
+                vuetify.VBtn(
+                    "Refresh",
+                    small=True,
+                    block=True,
+                    color="primary",
+                    click=ctrl.refresh_global_dashboard,
+                )
+
         vuetify.VCheckbox(
             label="Scale arrows by color metric",
             v_model=("scale_by_metric", state.scale_by_metric),
@@ -2066,7 +2813,7 @@ with SinglePageWithDrawerLayout(server) as layout:
         )
 
         vuetify.VDivider(classes="my-2")
-        vuetify.VSubheader("Global metrics")
+        vuetify.VSubheader("Selected Molecule Metrics")
         _metrics_table()
 
     with layout.content:
@@ -2083,7 +2830,70 @@ with SinglePageWithDrawerLayout(server) as layout:
                     ctrl.view_update = view.update
 
                 with vuetify.VCol(cols=4, classes="pa-2", style="height: 100%; overflow-y: auto;"):
-                    vuetify.VSubheader("Metric plots")
+                    vuetify.VSubheader("Global Dashboard")
+                    vuetify.VAlert(
+                        "{{ dashboard_assumptions }}",
+                        type="info",
+                        dense=True,
+                        outlined=True,
+                        prominent=False,
+                        classes="mb-2",
+                    )
+                    vuetify.VAlert(
+                        "{{ global_stale_note }}",
+                        type="warning",
+                        dense=True,
+                        outlined=True,
+                        prominent=False,
+                        v_if="global_stale_note",
+                        classes="mb-2",
+                    )
+                    with vuetify.VRow(no_gutters=True, classes="mb-2"):
+                        with vuetify.VCol(cols=6, classes="pr-1 pb-1"):
+                            with vuetify.VCard(outlined=True):
+                                vuetify.VCardText(
+                                    "Molecules: {{ global_kpi_molecules }}",
+                                    classes="py-2",
+                                )
+                        with vuetify.VCol(cols=6, classes="pl-1 pb-1"):
+                            with vuetify.VCard(outlined=True):
+                                vuetify.VCardText(
+                                    "Comparisons: {{ global_kpi_comparisons }}",
+                                    classes="py-2",
+                                )
+                        with vuetify.VCol(cols=6, classes="pr-1 pt-1"):
+                            with vuetify.VCard(outlined=True):
+                                vuetify.VCardText(
+                                    "Mean metric: {{ global_kpi_mean }}",
+                                    classes="py-2",
+                                )
+                        with vuetify.VCol(cols=6, classes="pl-1 pt-1"):
+                            with vuetify.VCard(outlined=True):
+                                vuetify.VCardText(
+                                    "Worst: {{ global_kpi_worst }}",
+                                    classes="py-2",
+                                )
+                    vuetify.VAlert(
+                        "{{ global_trend_error }}",
+                        type="warning",
+                        dense=True,
+                        outlined=True,
+                        prominent=False,
+                        v_if="global_trend_error",
+                        classes="mb-2",
+                    )
+                    vuetify.VImg(
+                        src=("global_trend_src", ""),
+                        contain=True,
+                        v_if="global_trend_src",
+                        classes="mb-2",
+                        style="width: 100%;",
+                    )
+                    _global_breakdown_table()
+                    vuetify.VSubheader("Cluster Summary")
+                    _global_cluster_table()
+                    vuetify.VDivider(classes="my-2")
+                    vuetify.VSubheader("Selected Molecule Trend")
                     vuetify.VSelect(
                         label="Signed pos/neg y-scale",
                         v_model=("posneg_yscale", state.posneg_yscale),
@@ -2118,6 +2928,7 @@ with SinglePageWithDrawerLayout(server) as layout:
 
             # Now that we have live views, build the initial scenes.
             _rebuild_both()
+            _maybe_update_global_dashboard(force=False)
 
 # -----------------------------------------------------------------------------
 # Main
@@ -2135,6 +2946,11 @@ def _parse_args(argv: list[str] | None = None):
         default=9010,
         type=int,
         help="Port to bind (default: 9010; use 0 to auto-pick a free port)",
+    )
+    parser.add_argument(
+        "--server",
+        action="store_true",
+        help="Compatibility flag for headless runs; browser auto-open is disabled by default.",
     )
     parser.add_argument(
         "--mol-file",
@@ -2238,17 +3054,29 @@ def main(argv: list[str] | None = None) -> int:
     if args.write_bundle:
         _WRITE_BUNDLE_DIR = Path(args.write_bundle).expanduser().resolve()
     _MOL_RESOLVER = None
-    kwargs: Dict[str, Any] = {}
-    host = args.host
-    port = _select_free_port(host, args.port)
-    kwargs["host"] = host
-    kwargs["port"] = port
+
+    # Re-bind dataset after CLI args are parsed (module import may have populated caches).
+    _clear_cached_data_views()
+    _refresh_selector_items()
+    _ensure_basis_selections()
+    state.active_data_source = _active_data_source_label()
+    if _SHG_DB_DIR is not None:
+        state.dataset_db_dir = str(_SHG_DB_DIR)
+    _rebuild_both()
+    _maybe_update_global_dashboard(force=False)
+
+    host = str(args.host)
+    port = _select_free_port(host, int(args.port))
 
     url_host = host
     if url_host in ("0.0.0.0", "::"):
         url_host = "127.0.0.1"
     print(f"Trame server running at http://{url_host}:{port}/")
-    server.start(**kwargs)
+    try:
+        server.start(host=host, port=port, open_browser=False)
+    except TypeError:
+        # Backward compatibility with older Trame versions.
+        server.start(host=host, port=port)
     return 0
 
 

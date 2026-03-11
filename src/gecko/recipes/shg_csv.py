@@ -45,8 +45,10 @@ def _build_beta_rows(
     *,
     include_geometry: bool,
     require_geometry: bool,
+    beta_payload: dict[str, Any] | None = None,
+    basis_override: str | None = None,
 ) -> list[dict[str, Any]]:
-    beta = calc.data.get("beta") or {}
+    beta = beta_payload or calc.data.get("beta") or {}
     if not beta or not all(k in beta for k in ("omega", "components", "values")):
         return []
 
@@ -79,7 +81,7 @@ def _build_beta_rows(
                 "molecule_id": gid,
                 "code": calc.code,
                 "root": str(calc.root),
-                "basis": calc.meta.get("basis"),
+                "basis": basis_override if basis_override is not None else calc.meta.get("basis"),
                 "method": calc.meta.get("method"),
                 "omegaA": omegaA,
                 "omegaB": omegaB,
@@ -193,29 +195,50 @@ def build_beta_table(
 
     for path in calc_paths:
         try:
-            calcs = gecko.load_calcs(path)
+            calc = gecko.load_calc(path)
         except Exception as exc:
             failures.append((str(path), f"{type(exc).__name__}: {exc}"))
             if fail_fast:
                 raise
             continue
 
-        for calc in calcs:
-            if require_geometry and calc.molecule is None:
-                msg = f"[gecko] missing geometry, skipping: {calc.root}"
-                if verbose:
-                    print(msg)
-                if fail_fast:
-                    raise ValueError(msg)
-                continue
+        if require_geometry and calc.molecule is None:
+            msg = f"[gecko] missing geometry, skipping: {calc.root}"
+            if verbose:
+                print(msg)
+            if fail_fast:
+                raise ValueError(msg)
+            continue
 
-            rows.extend(
-                _build_beta_rows(
-                    calc,
-                    include_geometry=include_geometry,
-                    require_geometry=require_geometry,
+        beta_by_out = calc.data.get("beta_by_out")
+        basis_by_out = calc.meta.get("basis_by_out")
+        if isinstance(beta_by_out, dict) and beta_by_out:
+            for out_name, beta_payload in beta_by_out.items():
+                basis_override = None
+                if isinstance(basis_by_out, dict):
+                    basis_value = basis_by_out.get(out_name)
+                    if basis_value is not None:
+                        basis_override = str(basis_value)
+                if basis_override is None and calc.meta.get("basis") is not None:
+                    basis_override = str(calc.meta.get("basis"))
+                rows.extend(
+                    _build_beta_rows(
+                        calc,
+                        include_geometry=include_geometry,
+                        require_geometry=require_geometry,
+                        beta_payload=beta_payload,
+                        basis_override=basis_override,
+                    )
                 )
+            continue
+
+        rows.extend(
+            _build_beta_rows(
+                calc,
+                include_geometry=include_geometry,
+                require_geometry=require_geometry,
             )
+        )
 
     if verbose:
         for path, error in failures:
