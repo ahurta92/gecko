@@ -27,6 +27,15 @@ ISO_POLAR_RE = re.compile(
 FLOAT_RE = re.compile(r"[+-]?\d+(?:\.\d+)?(?:[Ee][+-]?\d+)?")
 HF_ENERGY_RE = re.compile(r"^@\s*Final HF energy:\s*(-?\d+\.\d+)\s*$")
 MOL_BLOCK_HDR_RE = re.compile(r"^\s*Content of the \.mol file\s*$", re.IGNORECASE)
+EXCITATION_SECTION_RE = re.compile(
+    r"^\s*@?\s*(?P<spin>\w+)\s+electronic excitation energies\s*$",
+    re.IGNORECASE,
+)
+EXCITATION_ROW_RE = re.compile(
+    r"^\s*(?P<sym>\d+)\s+(?P<mode>\d+)\s+"
+    r"(?P<omega_au>[+-]?\d+(?:\.\d+)?(?:[Ee][+-]?\d+)?)\s+"
+    r"(?P<omega_ev>[+-]?\d+(?:\.\d+)?(?:[Ee][+-]?\d+)?)\s*$"
+)
 
 
 def _read_lines(path: Path) -> list[str]:
@@ -279,6 +288,52 @@ def parse_hf_energy(lines: Sequence[str]) -> float:
         if m:
             return float(m.group(1))
     raise ValueError("Final HF energy line not found.")
+
+
+def _is_separator_line(line: str) -> bool:
+    stripped = line.strip()
+    return bool(stripped) and set(stripped) <= {"-", "="}
+
+
+def parse_electronic_excitations(lines: Sequence[str]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    nlines = len(lines)
+    i = 0
+
+    while i < nlines:
+        section_match = EXCITATION_SECTION_RE.match(lines[i])
+        if not section_match:
+            i += 1
+            continue
+
+        spin = section_match.group("spin").lower()
+        i += 1
+        saw_data = False
+
+        while i < nlines:
+            row_match = EXCITATION_ROW_RE.match(lines[i])
+            if row_match:
+                saw_data = True
+                rows.append(
+                    {
+                        "spin": spin,
+                        "symmetry_excited_state": int(row_match.group("sym")),
+                        "mode": int(row_match.group("mode")),
+                        "omega_au": float(row_match.group("omega_au")),
+                        "omega_ev": float(row_match.group("omega_ev")),
+                    }
+                )
+                i += 1
+                continue
+
+            stripped = lines[i].strip()
+            if saw_data and not stripped:
+                break
+            if saw_data and stripped and not _is_separator_line(lines[i]):
+                break
+            i += 1
+
+    return rows
 
 
 class DaltonParser:
@@ -573,6 +628,7 @@ def _parse_one_out(path: Path) -> dict[str, Any]:
         "alpha": None,
         "beta": None,
         "raman": None,
+        "excited_states": None,
         "warnings": [],
     }
 
@@ -620,6 +676,13 @@ def _parse_one_out(path: Path) -> dict[str, Any]:
     except Exception:
         pass
 
+    try:
+        excited_states = parse_electronic_excitations(lines)
+        if excited_states:
+            out["excited_states"] = excited_states
+    except Exception:
+        pass
+
     return out
 
 
@@ -645,6 +708,7 @@ def parse_run(calc: Calculation) -> None:
     alpha_by_out: dict[str, Any] = {}
     beta_by_out: dict[str, Any] = {}
     raman_by_out: dict[str, Any] = {}
+    excited_by_out: dict[str, list[dict[str, Any]]] = {}
     energy_by_out: dict[str, float] = {}
     basis_by_out: dict[str, str] = {}
     warnings: list[str] = []
@@ -661,6 +725,9 @@ def parse_run(calc: Calculation) -> None:
             beta_by_out[out_path.name] = parsed["beta"]
         if parsed.get("raman") is not None:
             raman_by_out[out_path.name] = parsed["raman"]
+        excited_rows = parsed.get("excited_states")
+        if isinstance(excited_rows, list) and excited_rows:
+            excited_by_out[out_path.name] = excited_rows
         if parsed.get("ground_state_energy") is not None:
             energy_by_out[out_path.name] = float(parsed["ground_state_energy"])
         if parsed.get("basis") is not None:
@@ -728,6 +795,15 @@ def parse_run(calc: Calculation) -> None:
             calc.data["raman_by_out"] = raman_by_out
         else:
             calc.data["raman_by_out"] = raman_by_out
+
+    if excited_by_out:
+        if len(excited_by_out) == 1:
+            calc.data["excited_states"] = next(iter(excited_by_out.values()))
+        elif primary_name in excited_by_out:
+            calc.data["excited_states"] = excited_by_out[primary_name]
+            calc.data["excited_states_by_out"] = excited_by_out
+        else:
+            calc.data["excited_states_by_out"] = excited_by_out
 
     if basis_by_out and len(set(basis_by_out.values())) > 1:
         calc.meta["basis_by_out"] = basis_by_out

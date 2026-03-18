@@ -8,7 +8,7 @@ Gecko is a pure-Python project and can be installed directly from source.
 All dependencies (including a temporary fork of QCElemental) are installed automatically.
 
 ### Prerequisites
-- Python ≥ 3.12
+- Python ≥ 3.15
 - Git
 
 ---

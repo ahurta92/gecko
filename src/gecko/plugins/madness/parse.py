@@ -13,6 +13,8 @@ from gecko.molecule.canonical import canonicalize_atom_order
 
 logger = logging.getLogger(__name__)
 
+_HARTREE_TO_EV = 27.211386245988
+
 
 def _beta_df_to_tensor(beta_df) -> dict[str, Any]:
     """
@@ -300,6 +302,52 @@ def _as_bool(value: Any) -> bool | None:
         if lower in ("false", "f", "no", "n", "0"):
             return False
     return None
+
+
+def _extract_excited_states(raw_json: dict[str, Any]) -> list[dict[str, Any]]:
+    tasks = raw_json.get("tasks")
+    if not isinstance(tasks, list):
+        return []
+
+    rows: list[dict[str, Any]] = []
+    for task_index, task in enumerate(tasks):
+        if not isinstance(task, dict):
+            continue
+
+        excitations = task.get("excitations")
+        if not isinstance(excitations, list):
+            continue
+
+        task_model = str(task["model"]) if task.get("model") is not None else None
+        task_type = str(task["type"]) if task.get("type") is not None else None
+        task_nfreeze = _as_int(task.get("nfreeze"))
+
+        for excitation_index, excitation in enumerate(excitations):
+            if not isinstance(excitation, dict):
+                continue
+
+            row: dict[str, Any] = {
+                "task_index": task_index,
+                "task_model": task_model,
+                "task_type": task_type,
+                "task_nfreeze": task_nfreeze,
+                "excitation_index": excitation_index,
+            }
+            for key, value in excitation.items():
+                if isinstance(value, (bool, int, float, str)) or value is None:
+                    row[str(key)] = value
+
+            omega_au = _as_float(excitation.get("omega"))
+            row["omega_au"] = omega_au
+            row["omega_ev"] = omega_au * _HARTREE_TO_EV if omega_au is not None else None
+
+            irrep = row.get("irrep")
+            if irrep is not None:
+                row["irrep"] = str(irrep)
+
+            rows.append(row)
+
+    return rows
 
 
 def _lookup_frequency_value(mapping: Any, freq_key: Any) -> Any:
@@ -653,6 +701,7 @@ def parse_run(calc: Calculation) -> None:
     # Keep raw json as source of truth during migration
     calc.data["raw_json"] = _read_json(json_path)
     calc.data["timings"] = _parse_madness_timings(calc.data["raw_json"])
+    calc.data["excited_states"] = _extract_excited_states(calc.data["raw_json"])
     meta_path = calc.artifacts.get("responses_metadata_json")
     if isinstance(meta_path, Path) and meta_path.exists():
         calc.data["timings"] = _merge_timing_payloads(

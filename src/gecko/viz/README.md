@@ -1,6 +1,6 @@
 # gecko.viz
 
-Reusable visualization helpers and the Trame-based beta viewer.
+Reusable visualization helpers and the Trame-based Gecko apps.
 
 ## Run with an existing CSV
 
@@ -25,6 +25,17 @@ python -m gecko.viz.apps.beta_viewer --db-dir /path/to/calcs
 ```bash
 python -m gecko.viz.apps.beta_viewer --db-dir /path/to/calcs --write-bundle ./beta_bundle
 python -m gecko.viz.apps.beta_viewer --bundle-dir ./beta_bundle
+```
+
+## Raman dashboard
+
+`gecko.viz.apps.raman_dashboard` provides a data dashboard for frequency-dependent
+polarizability, polarizability-derivative trends, Raman intensity trends, and
+basis-set error summaries relative to a selectable reference basis.
+
+```bash
+python -m gecko.viz.apps.raman_dashboard \
+  --db-dir /gpfs/scratch/ahurtado/project_data/data/raman_paper/data
 ```
 
 ## Notes
