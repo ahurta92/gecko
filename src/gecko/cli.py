@@ -48,10 +48,14 @@ def _calc_init_command(args: argparse.Namespace) -> int:
         mol = fetch_geometry(args.molecule)
         print(f"  → {mol.get_molecular_formula()} ({len(mol.symbols)} atoms)")
 
-    codes: list[str] = args.code
+    codes: list[str] = ["madness", "dalton"] if args.code == ["both"] else args.code
     basis_sets: list[str] = args.basis or ["aug-cc-pVDZ"]
     freqs = [float(f) for f in (args.frequencies or ["0.0"])]
     out_dir = Path(args.out)
+
+    dft_params, mol_params, resp_params = _load_madness_params(
+        getattr(args, "madness_params", None)
+    )
 
     print(f"Generating input files in {out_dir} …")
     paths = generate_calc_dir(
@@ -63,6 +67,9 @@ def _calc_init_command(args: argparse.Namespace) -> int:
         frequencies=freqs,
         xc=args.xc,
         out_dir=out_dir,
+        dft_params=dft_params,
+        molecule_params=mol_params,
+        response_params=resp_params,
     )
 
     slurm_cfg = SlurmConfig(
@@ -121,8 +128,17 @@ def _calc_wizard_command(_args: argparse.Namespace) -> int:
         print(f"  → {mol.get_molecular_formula()} ({len(mol.symbols)} atoms)")
 
     property_ = _prompt_choices("Property to compute", ["alpha", "beta", "raman"], default="alpha")
-    codes_str = _prompt("Codes (comma-separated: madness, dalton, or both)", default="madness,dalton")
-    codes = [c.strip().lower() for c in codes_str.split(",")]
+    codes_str = _prompt("Codes (madness, dalton, or both)", default="both")
+    _codes_raw = codes_str.strip().lower()
+    if _codes_raw == "both":
+        codes = ["madness", "dalton"]
+    else:
+        codes = [c.strip() for c in _codes_raw.split(",") if c.strip()]
+    _valid = {"madness", "dalton"}
+    _invalid = [c for c in codes if c not in _valid]
+    if _invalid:
+        print(f"  Unknown code(s): {_invalid!r} — valid choices are: madness, dalton, both")
+        return 1
 
     basis_sets_str = _prompt(
         "Basis sets for DALTON (comma-separated, ignored for MADNESS)",
@@ -135,6 +151,10 @@ def _calc_wizard_command(_args: argparse.Namespace) -> int:
 
     xc = _prompt("XC functional (hf, b3lyp, pbe0, …)", default="hf")
     out_dir = Path(_prompt("Output directory", default=f"./calcs/{molecule}"))
+    params_file = _prompt(
+        "MADNESS params file (.toml/.json) — leave blank for defaults", default=""
+    )
+    dft_params, mol_params, resp_params = _load_madness_params(params_file or None)
 
     print(f"\n  codes      : {codes}")
     print(f"  basis_sets : {basis_sets}")
@@ -149,6 +169,9 @@ def _calc_wizard_command(_args: argparse.Namespace) -> int:
         frequencies=frequencies,
         xc=xc,
         out_dir=out_dir,
+        dft_params=dft_params,
+        molecule_params=mol_params,
+        response_params=resp_params,
     )
 
     want_slurm = _prompt_choices("Generate SLURM scripts?", ["yes", "no"], default="yes")
@@ -331,6 +354,35 @@ def _calc_status_command(args: argparse.Namespace) -> int:
 # ---------------------------------------------------------------------------
 
 
+def _load_madness_params(
+    params_file: str | None,
+) -> tuple[object, object, object]:
+    """Load DFTParams, MoleculeParams, ResponseParams from a TOML/JSON file.
+
+    Returns a 3-tuple ``(dft_params, mol_params, resp_params)``, each of
+    which is either a params object or None if not specified in the file.
+    """
+    if not params_file:
+        return None, None, None
+
+    from gecko.workflow.params import DFTParams, MoleculeParams, ResponseParams
+
+    path = Path(params_file)
+    raw: dict = {}
+    if path.suffix in (".toml",):
+        import tomllib
+        with open(path, "rb") as fh:
+            raw = tomllib.load(fh)
+    else:
+        import json
+        raw = json.loads(path.read_text())
+
+    dft = DFTParams(**raw["dft"]) if "dft" in raw else None
+    mol = MoleculeParams(**raw["molecule"]) if "molecule" in raw else None
+    resp = ResponseParams(**raw["response"]) if "response" in raw else None
+    return dft, mol, resp
+
+
 def _guess_mol_name(script_path: Path) -> str:
     """Infer molecule name from script or directory path."""
     # script is typically  <root>/<mol>/<code>/run_<mol>.sh
@@ -394,7 +446,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     init_parser.add_argument("--molecule", "-m", required=True, help="Molecule name or formula (e.g. SO2)")
     init_parser.add_argument("--property", "-p", choices=["alpha", "beta", "raman"], default="alpha")
-    init_parser.add_argument("--code", "-c", choices=["madness", "dalton"], nargs="+", default=["madness"])
+    init_parser.add_argument("--code", "-c", choices=["madness", "dalton", "both"], nargs="+", default=["madness"])
     init_parser.add_argument("--basis", "-b", nargs="+", default=["aug-cc-pVDZ"],
                              help="Basis sets for DALTON (ignored for MADNESS)")
     init_parser.add_argument("--frequencies", nargs="+", default=["0.0"],
@@ -402,6 +454,10 @@ def _build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument("--xc", default="hf", help="XC functional (hf, b3lyp, …)")
     init_parser.add_argument("--out", "-o", required=True, help="Output directory")
     init_parser.add_argument("--geom-file", default="", help="Local .xyz/.mol geometry file (skips PubChem)")
+    init_parser.add_argument(
+        "--madness-params", default="",
+        help="TOML or JSON file with [dft], [molecule], [response] tables for MADNESS overrides",
+    )
     init_parser.add_argument("--slurm", action="store_true", default=False,
                              help="Also generate SLURM submission scripts")
     # SLURM options (used when --slurm is passed)

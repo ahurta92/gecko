@@ -2,15 +2,33 @@
 
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 
 import numpy as np
 import qcelemental as qcel
 
+from gecko.workflow.params import (
+    DFTParams,
+    MoleculeParams,
+    ResponseParams,
+    _RESPONSE_FIELD_MAP,
+    _render_value,
+)
+
 Property = Literal["alpha", "beta", "raman"]
 XCFunctional = str  # "hf", "b3lyp", "pbe0", etc.
+
+# Mapping from DFTParams / MoleculeParams field names to MADNESS keys.
+# Only entries that differ from the Python attribute name are listed.
+_DFT_FIELD_MAP: dict[str, str] = {
+    "spin_restricted": "spin_restricted",
+}
+_MOL_FIELD_MAP: dict[str, str] = {
+    "no_orient": "no_orient",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -46,6 +64,14 @@ class MadnessInput:
         Property to compute.
     frequencies : list[float]
         Optical frequencies in atomic units (Hartree).
+    dft_params : DFTParams, optional
+        Fine-grained overrides for the ``dft`` section.  Any non-None
+        field is merged on top of the defaults derived from the
+        high-level parameters above.
+    molecule_params : MoleculeParams, optional
+        Fine-grained overrides for the ``molecule`` section.
+    response_params : ResponseParams, optional
+        Fine-grained overrides for the ``response`` section.
     """
 
     molecule: qcel.models.Molecule
@@ -58,6 +84,10 @@ class MadnessInput:
     response_maxiter: int = 25
     property: Property = "alpha"
     frequencies: list[float] = field(default_factory=lambda: [0.0])
+    # Fine-grained overrides (all optional; None = use high-level defaults)
+    dft_params: Optional[DFTParams] = None
+    molecule_params: Optional[MoleculeParams] = None
+    response_params: Optional[ResponseParams] = None
 
     def write(self, out_dir: Path) -> Path:
         """Write the ``.in`` file and return its path."""
@@ -81,66 +111,104 @@ class MadnessInput:
         return "\n".join(sections) + "\n"
 
     def _dft_section(self) -> str:
-        lines = ["dft"]
+        # Phase 1: high-level defaults
+        base: dict[str, object] = {
+            "k": self.k,
+            "econv": self.econv,
+            "dconv": self.dconv,
+            "maxiter": self.maxiter,
+            "protocol": [0.0001, 1e-6, 1e-7],
+        }
         if self.xc.lower() != "hf":
-            lines.append(f"    xc {self.xc}")
-        lines += [
-            f"    k {self.k}",
-            f"    econv {self.econv:.1e}",
-            f"    dconv {self.dconv:.1e}",
-            f"    maxiter {self.maxiter}",
-            "    protocol [0.0001,1e-06,1e-7]",
-            "end",
-        ]
+            base["xc"] = self.xc
+
+        # Phase 2: overlay from DFTParams
+        if self.dft_params is not None:
+            for f in dataclasses.fields(self.dft_params):
+                v = getattr(self.dft_params, f.name)
+                if v is None:
+                    continue
+                key = _DFT_FIELD_MAP.get(f.name, f.name)
+                if key == "xc":
+                    if str(v).lower() == "hf":
+                        base.pop("xc", None)
+                    else:
+                        base["xc"] = v
+                else:
+                    base[key] = v
+
+        lines = ["dft"]
+        for key, val in base.items():
+            lines.append(f"    {key} {_render_value(val)}")
+        lines.append("end")
         return "\n".join(lines)
 
     def _molecule_section(self) -> str:
+        # Phase 1: defaults
+        base: dict[str, object] = {
+            "eprec": 1e-6,
+            "units": "atomic",
+        }
+
+        # Phase 2: overlay from MoleculeParams
+        if self.molecule_params is not None:
+            for f in dataclasses.fields(self.molecule_params):
+                v = getattr(self.molecule_params, f.name)
+                if v is None:
+                    continue
+                key = _MOL_FIELD_MAP.get(f.name, f.name)
+                base[key] = v
+
         geom = np.asarray(self.molecule.geometry).reshape(-1, 3)
-        lines = [
-            "molecule",
-            "    eprec  1.0000e-06",
-            "    units  atomic",
-        ]
+        lines = ["molecule"]
+        for key, val in base.items():
+            lines.append(f"    {key}  {_render_value(val)}")
         for sym, coord in zip(self.molecule.symbols, geom):
-            lines.append(f"    {sym:2s}  {coord[0]:20.10f}  {coord[1]:20.10f}  {coord[2]:20.10f}")
+            lines.append(
+                f"    {sym:2s}  {coord[0]:20.10f}  {coord[1]:20.10f}  {coord[2]:20.10f}"
+            )
         lines.append("end")
         return "\n".join(lines)
 
     def _response_section(self) -> str:
-        freq_str = "[" + ",".join(str(f) for f in self.frequencies) + "]"
         n_atoms = len(self.molecule.symbols)
-        atom_indices = list(range(n_atoms))
-        atom_idx_str = "[" + ",".join(str(i) for i in atom_indices) + "]"
+
+        # Phase 1: property-based presets
+        base: dict[str, object] = {}
+        if self.property == "alpha":
+            base["dipole.frequencies"] = self.frequencies
+            base["dipole.directions"] = "xyz"
+            base["requested_properties"] = ["polarizability"]
+        elif self.property == "beta":
+            base["dipole.frequencies"] = self.frequencies
+            base["dipole.directions"] = "xyz"
+            base["quadratic"] = True
+            base["requested_properties"] = ["hyperpolarizability"]
+        elif self.property == "raman":
+            base["dipole.frequencies"] = self.frequencies
+            base["dipole.directions"] = "xyz"
+            base["nuclear"] = True
+            base["nuclear.directions"] = "xyz"
+            base["nuclear.frequencies"] = 0.0
+            base["nuclear.atom_indices"] = list(range(n_atoms))
+            base["requested_properties"] = ["polarizability", "raman"]
+            base["property"] = True
+
+        base["maxiter"] = self.response_maxiter
+
+        # Phase 2: overlay from ResponseParams
+        if self.response_params is not None:
+            for f in dataclasses.fields(self.response_params):
+                v = getattr(self.response_params, f.name)
+                if v is None:
+                    continue
+                key = _RESPONSE_FIELD_MAP.get(f.name, f.name)
+                base[key] = v
 
         lines = ["response"]
-        if self.property == "alpha":
-            lines += [
-                f"    dipole.frequencies {freq_str}",
-                "    dipole.directions xyz",
-                "    requested_properties [polarizability]",
-            ]
-        elif self.property == "beta":
-            lines += [
-                f"    dipole.frequencies {freq_str}",
-                "    dipole.directions xyz",
-                "    quadratic true",
-                "    requested_properties [hyperpolarizability]",
-            ]
-        elif self.property == "raman":
-            lines += [
-                f"    dipole.frequencies {freq_str}",
-                "    dipole.directions xyz",
-                "    nuclear true",
-                "    nuclear.directions xyz",
-                "    nuclear.frequencies 0.0",
-                f"    nuclear.atom_indices {atom_idx_str}",
-                "    requested_properties [polarizability,raman]",
-                "    property true",
-            ]
-        lines += [
-            f"    maxiter {self.response_maxiter}",
-            "end",
-        ]
+        for key, val in base.items():
+            lines.append(f"    {key} {_render_value(val)}")
+        lines.append("end")
         return "\n".join(lines)
 
 
@@ -154,6 +222,8 @@ class DaltonInput:
     """Parameters for a DALTON response calculation.
 
     Generates a ``.dal`` input file and a ``.mol`` geometry file.
+    For Raman calculations, also generates an ``optimize.dal`` file
+    (geometry optimisation must be run before the Raman step).
 
     Parameters
     ----------
@@ -171,6 +241,7 @@ class DaltonInput:
         Optical frequencies in atomic units (Hartree).
     direct : bool
         Use direct integrals (``.DIRECT``).  Recommended for large systems.
+        Not used for Raman (the ``.WALK`` workflow handles this).
     """
 
     molecule: qcel.models.Molecule
@@ -182,51 +253,120 @@ class DaltonInput:
     direct: bool = True
 
     def write(self, out_dir: Path) -> dict[str, Path]:
-        """Write ``.dal`` and ``.mol`` files.
+        """Write input files and return a dict of ``{label: Path}``.
 
-        Returns
-        -------
-        dict
-            ``{"dal": Path, "mol": Path}``
+        For alpha/beta: ``{"dal": ..., "mol": ...}``
+        For raman:      ``{"optimize_dal": ..., "raman_dal": ..., "mol": ...}``
         """
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
         stem = f"{self.mol_name}_{self.basis}"
-        dal_path = out_dir / f"{stem}.dal"
         mol_path = out_dir / f"{stem}.mol"
-        dal_path.write_text(self._render_dal())
         mol_path.write_text(self._render_mol())
-        return {"dal": dal_path, "mol": mol_path}
+
+        if self.property == "raman":
+            opt_path = out_dir / "optimize.dal"
+            ram_path = out_dir / "raman.dal"
+            opt_path.write_text(self._render_dal_optimize())
+            ram_path.write_text(self._render_dal_raman())
+            return {"optimize_dal": opt_path, "raman_dal": ram_path, "mol": mol_path}
+        else:
+            dal_path = out_dir / f"{stem}.dal"
+            dal_path.write_text(self._render_dal())
+            return {"dal": dal_path, "mol": mol_path}
 
     # ------------------------------------------------------------------
 
-    def _render_dal(self) -> str:
-        if self.property == "raman":
-            return self._render_dal_raman()
+    def _wf_lines(self) -> list[str]:
+        """Wave function section lines, shared by all .dal variants."""
+        if self.xc.lower() == "hf":
+            return ["**WAVE FUNCTIONS", ".HF"]
+        return ["**WAVE FUNCTIONS", ".DFT", self.xc.upper()]
 
+    def _render_dal(self) -> str:
+        """Alpha / beta .dal file."""
         lines = ["**DALTON INPUT", ".RUN RESPONSE"]
         if self.direct:
             lines.append(".DIRECT")
-        lines.append("**WAVE FUNCTIONS")
-        if self.xc.lower() == "hf":
-            lines.append(".HF")
-        else:
-            lines += [".DFT", self.xc.upper()]
+        lines.extend(self._wf_lines())
         lines.extend(self._response_lines())
         lines.append("**END OF DALTON INPUT")
         return "\n".join(lines) + "\n"
 
+    def _render_dal_optimize(self) -> str:
+        """Geometry optimisation .dal file (required before Raman)."""
+        lines = [
+            "**DALTON INPUT",
+            ".OPTIMIZE",
+            "**OPTIMIZE",
+            ".2NDORD",
+        ]
+        lines.extend(self._wf_lines())
+        lines += [
+            "*SCF INPUT",
+            ".THRESH",
+            "1.0D-8",
+            "**PROPERTIES",
+            ".VIBANA",
+            ".SHIELD",
+            "**VIBANA",
+            ".PRINT",
+            "100",
+            "**END OF DALTON INPUT",
+        ]
+        return "\n".join(lines) + "\n"
+
     def _render_dal_raman(self) -> str:
-        """Raman requires a PROPERTIES run (vibrational analysis)."""
-        lines = ["**DALTON INPUT", ".RUN PROPERTIES"]
-        if self.direct:
-            lines.append(".DIRECT")
-        lines.append("**WAVE FUNCTIONS")
-        if self.xc.lower() == "hf":
-            lines.append(".HF")
-        else:
-            lines += [".DFT", self.xc.upper()]
-        lines += ["**PROPERTIES", ".VIBANA", ".RAMAN", "**END OF DALTON INPUT"]
+        """Raman .dal file using the .WALK numerical integration workflow.
+
+        Frequencies appear in three sections (**START, **EACH STEP,
+        **PROPERTIES) and must be identical in all three.
+        """
+        n = len(self.frequencies)
+        freq_line = " ".join(str(f) for f in self.frequencies)
+
+        # The ABALNR block (frequencies) is identical in all three sections.
+        abalnr_block = [
+            "*ABALNR",
+            ".THRESH",
+            "1.0D-7",
+            ".FREQUE",
+            str(n),
+            freq_line,
+        ]
+
+        lines = [
+            "**DALTON INPUT",
+            ".WALK",
+            "*WALK",
+            ".NUMERI",
+        ]
+        lines.extend(self._wf_lines())
+        lines += [
+            "*SCF INPUT",
+            ".THRESH",
+            "1.0D-8",
+            "**START",
+            ".RAMAN",
+        ]
+        lines.extend(abalnr_block)
+        lines += ["**EACH STEP", ".RAMAN"]
+        lines.extend(abalnr_block)
+        lines += [
+            "**PROPERTIES",
+            ".RAMAN",
+            ".VIBANA",
+            "*RESPONSE",
+            ".THRESH",
+            "1.0D-6",
+        ]
+        lines.extend(abalnr_block)
+        lines += [
+            "*VIBANA",
+            ".PRINT",
+            "100",
+            "**END OF DALTON INPUT",
+        ]
         return "\n".join(lines) + "\n"
 
     def _response_lines(self) -> list[str]:
@@ -260,6 +400,9 @@ def generate_calc_dir(
     frequencies: list[float] | None = None,
     xc: str = "hf",
     out_dir: Path,
+    dft_params: Optional[DFTParams] = None,
+    molecule_params: Optional[MoleculeParams] = None,
+    response_params: Optional[ResponseParams] = None,
 ) -> dict[str, list[Path]]:
     """Generate input files for one or more codes and basis sets.
 
@@ -282,6 +425,12 @@ def generate_calc_dir(
         Exchange-correlation functional.
     out_dir : Path
         Root output directory.  Sub-directories are created automatically.
+    dft_params : DFTParams, optional
+        Fine-grained overrides for the MADNESS ``dft`` section.
+    molecule_params : MoleculeParams, optional
+        Fine-grained overrides for the MADNESS ``molecule`` section.
+    response_params : ResponseParams, optional
+        Fine-grained overrides for the MADNESS ``response`` section.
 
     Returns
     -------
@@ -300,6 +449,9 @@ def generate_calc_dir(
             property=property,
             frequencies=freqs,
             xc=xc,
+            dft_params=dft_params,
+            molecule_params=molecule_params,
+            response_params=response_params,
         )
         path = inp.write(mad_dir)
         result["madness"].append(path)
