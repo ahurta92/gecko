@@ -275,6 +275,84 @@ def submit_job(
     return JobHandle(job_id=job_id, script_path=str(script_path))
 
 
+def load_slurm_profile(cluster: str, molecule_name: str, tier: str) -> SlurmConfig:
+    """Build a SlurmConfig from slurm_profiles.json for the given cluster, molecule, and tier.
+
+    Parameters
+    ----------
+    cluster : str
+        Cluster name, e.g. "xeonmax", "40core", "96core".
+    molecule_name : str
+        Molecule name as passed by the user (e.g. "H2O", "SO2").
+    tier : str
+        Accuracy tier: "low", "medium", or "high".
+
+    Returns
+    -------
+    SlurmConfig
+        Populated from cluster settings and resource profiles.
+    """
+    import json
+    from gecko.workflow.params import _FIXTURES_DIR
+
+    profiles_path = _FIXTURES_DIR / "slurm_profiles.json"
+    if not profiles_path.exists():
+        raise FileNotFoundError(
+            f"slurm_profiles.json not found at {profiles_path}. "
+            f"Set GECKO_FIXTURES_DIR to the fixtures directory."
+        )
+
+    with open(profiles_path) as f:
+        data = json.load(f)
+
+    clusters = data.get("clusters", {})
+    if cluster not in clusters:
+        valid = ", ".join(clusters.keys())
+        raise ValueError(f"Unknown cluster {cluster!r}. Valid clusters: {valid}")
+
+    cluster_cfg = clusters[cluster]
+
+    # Resolve size class from molecule name
+    size_class_map = data.get("size_class_map", {})
+    mol_lower = molecule_name.lower().replace(" ", "")
+    size_class = size_class_map.get(mol_lower)
+    if size_class is None:
+        for key, sc in size_class_map.items():
+            if key.startswith(mol_lower + "_"):
+                size_class = sc
+                break
+    if size_class is None:
+        size_class = "small"  # safe default for unknown molecules
+
+    # Resolve resource profile
+    resource_profiles = data.get("resource_profiles", {})
+    if size_class not in resource_profiles:
+        raise ValueError(f"No resource profile for size class {size_class!r}")
+
+    size_cfg = resource_profiles[size_class]
+    if tier not in size_cfg:
+        valid_tiers = [t for t in size_cfg if not t.startswith("_")]
+        raise ValueError(
+            f"No profile for tier {tier!r} in size class {size_class!r}. "
+            f"Valid: {', '.join(valid_tiers)}"
+        )
+
+    res = size_cfg[tier]
+
+    return SlurmConfig(
+        partition=cluster_cfg.get("default_partition", ""),
+        nodes=res["nodes"],
+        tasks_per_node=res["ntasks_per_node"],
+        walltime=res["wall_time"],
+        account=cluster_cfg.get("account", ""),
+        module_load_script=cluster_cfg.get("env_script") or "",
+        mad_num_threads=res.get("mad_num_threads", 8),
+        madqc_executable=str(
+            Path(cluster_cfg["build_dir"]) / cluster_cfg["madqc_bin"]
+        ),
+    )
+
+
 def poll_job(handle: JobHandle | str) -> str:
     """Query SLURM job status.
 

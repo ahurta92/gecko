@@ -13,7 +13,10 @@ MADNESS use its own internal default."  Set a field to override it.
 from __future__ import annotations
 
 import dataclasses
+import json
+import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 
@@ -244,3 +247,60 @@ class ResponseParams:
 
     property: Optional[bool] = None
     """Boolean flag to enable response property output."""
+
+
+# ---------------------------------------------------------------------------
+# Numerical tier loader
+# ---------------------------------------------------------------------------
+
+_FIXTURES_DIR = Path(
+    os.environ.get(
+        "GECKO_FIXTURES_DIR",
+        "/gpfs/projects/rjh/adrian/development/madness-worktrees/molresponse-feature-next"
+        "/src/apps/molresponse_v3/tests/fixtures",
+    )
+)
+
+
+def _load_tier(tier: str) -> tuple[DFTParams | None, MoleculeParams | None]:
+    """Load DFTParams and MoleculeParams for the given accuracy tier.
+
+    Reads numerical_settings.json from GECKO_FIXTURES_DIR.
+    Returns (DFTParams, MoleculeParams) or (None, None) if tier is "none"
+    or the settings file cannot be found.
+    """
+    if tier == "none":
+        return None, None
+
+    settings_path = _FIXTURES_DIR / "numerical_settings.json"
+    if not settings_path.exists():
+        raise FileNotFoundError(
+            f"numerical_settings.json not found at {settings_path}. "
+            f"Set GECKO_FIXTURES_DIR to the fixtures directory."
+        )
+
+    with open(settings_path) as f:
+        data = json.load(f)
+
+    tiers = data.get("tiers", {})
+    if tier not in tiers:
+        valid = ", ".join(tiers.keys())
+        raise ValueError(f"Unknown tier {tier!r}. Valid tiers: {valid}")
+
+    tier_data = tiers[tier]
+    dft_raw = tier_data.get("dft", {})
+    mol_raw = tier_data.get("molecule", {})
+
+    dft_params = DFTParams(
+        dconv=dft_raw.get("dconv"),
+        econv=dft_raw.get("econv"),
+        protocol=dft_raw.get("protocol"),
+        l=dft_raw.get("l"),
+        maxiter=dft_raw.get("maxiter"),
+        localize=dft_raw.get("localize"),
+        dipole=dft_raw.get("dipole"),
+    )
+    mol_params = MoleculeParams(
+        eprec=mol_raw.get("eprec"),
+    )
+    return dft_params, mol_params
