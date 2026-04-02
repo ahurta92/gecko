@@ -35,6 +35,8 @@ _SCRATCH = Path(
     )
 )
 
+from gecko.workflow.params import _FIXTURES_DIR, _load_tier
+
 # ---------------------------------------------------------------------------
 # Tools — Input File Operations
 # ---------------------------------------------------------------------------
@@ -468,6 +470,7 @@ def generate_calc_inputs(
     output_dir: str = "",
     geom_file: str = "",
     code: str = "madness",
+    tier: str = "medium",
 ) -> str:
     """Generate MADNESS (and optionally DALTON) input files for a molecule.
 
@@ -482,6 +485,9 @@ def generate_calc_inputs(
         output_dir: Output directory. Default: $GECKO_SCRATCH/<molecule>.
         geom_file: Optional path to .xyz/.mol file (overrides library/PubChem).
         code: "madness", "dalton", or "both".
+        tier: Numerical accuracy tier: "low", "medium" (default), "high", or "none".
+              Controls dconv, econv, protocol, eprec from numerical_settings.json.
+              "none" uses the writer defaults.
     """
     from gecko.workflow.geometry import fetch_geometry, load_geometry_from_file
     from gecko.workflow.writers import generate_calc_dir
@@ -500,6 +506,8 @@ def generate_calc_inputs(
     freqs = [float(f.strip()) for f in frequencies.split(",")]
     out = Path(output_dir) if output_dir else _SCRATCH / molecule
 
+    dft_params, mol_params = _load_tier(tier)
+
     paths = generate_calc_dir(
         molecule=mol,
         mol_name=molecule,
@@ -509,9 +517,11 @@ def generate_calc_inputs(
         frequencies=freqs,
         xc=xc,
         out_dir=out,
+        dft_params=dft_params,
+        molecule_params=mol_params,
     )
 
-    lines = [f"Generated files in {out}:"]
+    lines = [f"Generated files in {out} (tier={tier}):"]
     for c, file_list in paths.items():
         for p in file_list:
             lines.append(f"  [{c}] {p}")

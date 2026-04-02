@@ -53,9 +53,14 @@ def _calc_init_command(args: argparse.Namespace) -> int:
     freqs = [float(f) for f in (args.frequencies or ["0.0"])]
     out_dir = Path(args.out)
 
-    dft_params, mol_params, resp_params = _load_madness_params(
-        getattr(args, "madness_params", None)
-    )
+    if args.tier and args.tier != "none":
+        from gecko.workflow.params import _load_tier
+        dft_params, mol_params = _load_tier(args.tier)
+        resp_params = None
+    else:
+        dft_params, mol_params, resp_params = _load_madness_params(
+            getattr(args, "madness_params", None)
+        )
 
     print(f"Generating input files in {out_dir} …")
     paths = generate_calc_dir(
@@ -72,16 +77,22 @@ def _calc_init_command(args: argparse.Namespace) -> int:
         response_params=resp_params,
     )
 
-    slurm_cfg = SlurmConfig(
-        partition=args.partition,
-        account=args.account,
-        nodes=args.nodes,
-        tasks_per_node=args.tasks_per_node,
-        walltime=args.walltime,
-        madqc_executable=args.madqc_exec,
-    )
+    if args.cluster:
+        from gecko.workflow.hpc import load_slurm_profile
+        profile_tier = args.tier if args.tier and args.tier != "none" else "medium"
+        print(f"Loading SLURM profile for cluster={args.cluster!r}, tier={profile_tier!r} …")
+        slurm_cfg = load_slurm_profile(args.cluster, args.molecule, profile_tier)
+    else:
+        slurm_cfg = SlurmConfig(
+            partition=args.partition,
+            account=args.account,
+            nodes=args.nodes,
+            tasks_per_node=args.tasks_per_node,
+            walltime=args.walltime,
+            madqc_executable=args.madqc_exec,
+        )
 
-    if args.slurm:
+    if args.cluster or args.slurm:
         print("Generating SLURM scripts …")
         for in_path in paths.get("madness", []):
             s = write_madness_slurm(in_path, slurm_cfg)
@@ -231,6 +242,50 @@ def _calc_wizard_command(_args: argparse.Namespace) -> int:
             cmd_parts.append(f"--account {account}")
     print("\nEquivalent command:")
     print("  " + " \\\n    ".join(cmd_parts))
+
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# gecko calc results
+# ---------------------------------------------------------------------------
+
+
+def _calc_results_command(args: argparse.Namespace) -> int:
+    import gecko
+    from gecko.tables.builder import TableBuilder
+
+    calc_dir = Path(args.calc_dir)
+    calc = gecko.load_calc(str(calc_dir))
+    builder = TableBuilder([calc])
+
+    property_map = {
+        "alpha": builder.build_alpha,
+        "beta": builder.build_beta,
+        "raman": builder.build_raman,
+        "energy": builder.build_energy,
+    }
+
+    build_fn = property_map[args.property]
+    try:
+        df = build_fn()
+    except Exception as exc:
+        print(f"ERROR: Could not extract {args.property}: {exc}")
+        return 1
+
+    if df.empty:
+        print(f"No {args.property} data found in {calc_dir}")
+        return 0
+
+    if args.format == "csv":
+        if args.out:
+            out_path = Path(args.out)
+            df.to_csv(out_path, index=False)
+            print(f"Written to {out_path}")
+        else:
+            print(df.to_csv(index=False), end="")
+    else:
+        print(df.to_string(index=False))
 
     return 0
 
@@ -679,13 +734,23 @@ def _build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument("--xc", default="hf", help="XC functional (hf, b3lyp, …)")
     init_parser.add_argument("--out", "-o", required=True, help="Output directory")
     init_parser.add_argument("--geom-file", default="", help="Local .xyz/.mol geometry file (skips PubChem)")
-    init_parser.add_argument(
+    tier_group = init_parser.add_mutually_exclusive_group()
+    tier_group.add_argument(
+        "--tier", default="none", choices=["low", "medium", "high", "none"],
+        help="Numerical accuracy tier from numerical_settings.json (default: none)",
+    )
+    tier_group.add_argument(
         "--madness-params", default="",
         help="TOML or JSON file with [dft], [molecule], [response] tables for MADNESS overrides",
     )
+    init_parser.add_argument(
+        "--cluster", default="",
+        choices=["xeonmax", "40core", "96core"],
+        help="Load SLURM settings from slurm_profiles.json for this cluster (implies --slurm)",
+    )
     init_parser.add_argument("--slurm", action="store_true", default=False,
-                             help="Also generate SLURM submission scripts")
-    # SLURM options (used when --slurm is passed)
+                             help="Also generate SLURM submission scripts (manual settings)")
+    # SLURM options (used when --slurm is passed, ignored when --cluster is used)
     init_parser.add_argument("--partition", default="hbm-long-96core")
     init_parser.add_argument("--account", default="")
     init_parser.add_argument("--nodes", type=int, default=4)
@@ -693,6 +758,26 @@ def _build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument("--walltime", default="08:00:00")
     init_parser.add_argument("--madqc-exec", default="madqc", help="Path to madqc executable")
     init_parser.set_defaults(func=_calc_init_command)
+
+    # gecko calc results
+    results_parser = calc_subparsers.add_parser(
+        "results",
+        help="Extract properties from a completed calculation",
+    )
+    results_parser.add_argument("calc_dir", help="Path to the calculation directory")
+    results_parser.add_argument(
+        "--property", "-p", choices=["alpha", "beta", "raman", "energy"], default="alpha",
+        help="Property to extract (default: alpha)",
+    )
+    results_parser.add_argument(
+        "--format", "-f", choices=["csv", "table"], default="table",
+        help="Output format (default: table)",
+    )
+    results_parser.add_argument(
+        "--out", "-o", default="",
+        help="Write output to file (csv format only; default: print to stdout)",
+    )
+    results_parser.set_defaults(func=_calc_results_command)
 
     # gecko calc wizard
     wizard_parser = calc_subparsers.add_parser(
