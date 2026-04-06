@@ -400,6 +400,7 @@ def generate_calc_dir(
     frequencies: list[float] | None = None,
     xc: str = "hf",
     out_dir: Path,
+    tier: str | None = None,
     dft_params: Optional[DFTParams] = None,
     molecule_params: Optional[MoleculeParams] = None,
     response_params: Optional[ResponseParams] = None,
@@ -442,7 +443,7 @@ def generate_calc_dir(
     result: dict[str, list[Path]] = {"madness": [], "dalton": []}
 
     if "madness" in codes:
-        mad_dir = out_dir / mol_name / "madness"
+        mad_dir = out_dir / mol_name / (f"mad-{tier}" if tier and tier != "none" else "madness")
         inp = MadnessInput(
             molecule=molecule,
             mol_name=mol_name,
