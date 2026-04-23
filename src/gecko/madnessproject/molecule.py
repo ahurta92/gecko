@@ -6,7 +6,7 @@ Mirrors the daltonproject Molecule API but generates MADNESS molecule blocks.
 from __future__ import annotations
 
 import os
-from typing import Optional, Sequence
+from typing import Sequence
 
 import numpy as np
 import qcelemental as qcel

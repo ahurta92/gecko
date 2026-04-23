@@ -30,7 +30,7 @@ Object mapping to MADNESS .in file sections:
     ResponseParameters     ->  response ... end
     Molecule               ->  molecule ... end
 
-Block order in generated inputs: ``dft → response → molecule``.
+Block order in generated inputs: ``dft → molecule → response``.
 """
 
 from .calculation_parameters import CalculationParameters, Protocol
@@ -57,4 +57,4 @@ __all__ = [
     "CalculationResult",
 ]
 
-__version__ = "0.2.0"
+__version__ = "0.0.0"

@@ -10,7 +10,6 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 from .calculation_parameters import CalculationParameters
 from .input_generator import write_input
@@ -41,7 +40,7 @@ class ComputeSettings:
         Alias for compatibility with daltonproject. Sets OMP_NUM_THREADS.
     mpi_command : str, optional
         MPI launcher command (e.g. ``"mpirun -np"``). Defaults to
-        ``$DP_MPI_COMMAND`` or ``"mpirun -np"``.
+        ``$MADNESS_MPI_COMMAND`` or ``"mpirun -np"``.
     mpi_num_procs : int, optional
         Number of MPI processes.
     memory : int, optional
@@ -90,7 +89,7 @@ class ComputeSettings:
         self.omp_num_threads: int = omp_num_threads
 
         if mpi_command is None:
-            mpi_command = os.environ.get("DP_MPI_COMMAND", "mpirun -np")
+            mpi_command = os.environ.get("MADNESS_MPI_COMMAND", "mpirun -np")
         self.mpi_command: str = mpi_command
 
         self.memory: int | None = memory

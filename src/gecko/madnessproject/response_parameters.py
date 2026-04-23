@@ -7,8 +7,6 @@ and their parameters, then pass to ``madness_input()`` to render.
 
 from __future__ import annotations
 
-from typing import Optional
-
 
 class ResponseParameters:
     """Response calculation parameters for MADNESS.
@@ -25,7 +23,7 @@ class ResponseParameters:
         Optical frequencies in Hartree for dipole response.
     directions : str
         Perturbation directions: ``"xyz"``, ``"x"``, ``"y"``, ``"z"``.
-    property : bool
+    emit_property : bool
         Emit the ``property true`` flag.  Default True.
     requested_properties : list[str], optional
         Properties to output.  Default ``["polarizability"]`` when
@@ -77,7 +75,7 @@ class ResponseParameters:
         dipole: bool = True,
         frequencies: list[float] | None = None,
         directions: str = "xyz",
-        property: bool = True,
+        emit_property: bool = True,
         requested_properties: list[str] | None = None,
         quadratic: bool | None = None,
         nuclear: bool | None = None,
@@ -100,7 +98,7 @@ class ResponseParameters:
         self.dipole = dipole
         self.frequencies = frequencies if frequencies is not None else [0.0]
         self.directions = directions
-        self.property = property
+        self.emit_property = emit_property
         self.requested_properties = requested_properties
         self.quadratic = quadratic
         self.nuclear = nuclear
@@ -173,7 +171,7 @@ class ResponseParameters:
             d["requested_properties"] = self._default_requested_properties()
 
         # property true/false flag
-        if self.property:
+        if self.emit_property:
             d["property"] = True
 
         # Solver parameters

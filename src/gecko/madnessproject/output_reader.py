@@ -26,9 +26,9 @@ class CalculationResult:
     ----------
     molecule : Molecule or None
         The molecular geometry from the output.
-    calc_params : CalculationParameter or None
+    calc_params : CalculationParameters or None
         Reconstructed calculation parameters.
-    response_params : Response or None
+    response_params : ResponseParameters or None
         Reconstructed response parameters.
     energy : float or None
         Ground-state energy in Hartree.
@@ -43,8 +43,8 @@ class CalculationResult:
     def __init__(self, raw: dict) -> None:
         self.raw = raw
         self.molecule: Molecule | None = None
-        self.calc_params: CalculationParameter | None = None
-        self.response_params: Response | None = None
+        self.calc_params: CalculationParameters | None = None
+        self.response_params: ResponseParameters | None = None
         self.energy: float | None = None
         self.alpha: dict | None = None
         self.beta: dict | None = None
@@ -119,8 +119,10 @@ def _parse_calc_info(data: dict, result: CalculationResult) -> None:
     opt = task.get("optimization_results", {})
     if "final_energy" in opt:
         result.energy = opt["final_energy"]
-    elif "scf_e" in task:
-        result.energy = task["scf_e"]
+    elif "energy" in task:
+        result.energy = task["energy"]
+    elif "energy" in task.get("properties", {}):
+        result.energy = task["properties"]["energy"]
 
     # Calculation parameters from convergence info
     conv = task.get("convergence", {})

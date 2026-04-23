@@ -3,16 +3,13 @@
 Mirrors ``daltonproject.dalton.program.dalton_input`` — takes parameter
 objects and renders a complete MADNESS input string.
 
-Block order matches Adrian's reference example:
-``dft → response → molecule``.
+Block order matches existing fixtures:
+``dft → molecule → response``.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
-
-import numpy as np
 
 from .calculation_parameters import CalculationParameters
 from .molecule import Molecule
@@ -22,15 +19,6 @@ from .response_parameters import ResponseParameters
 # ---------------------------------------------------------------------------
 # Value rendering
 # ---------------------------------------------------------------------------
-
-
-def _render_scalar(v: object) -> str:
-    """Render a scalar (non-bool) value."""
-    if isinstance(v, float) and v != 0.0 and abs(v) < 1e-2:
-        return f"{v:.0e}"
-    if isinstance(v, float):
-        return str(v)
-    return str(v)
 
 
 def _render_value(v: object, *, bool_style: str = "lower") -> str:
@@ -111,8 +99,7 @@ def madness_input(
     Mirrors ``daltonproject.dalton.program.dalton_input()`` — takes
     parameter objects and returns the complete input file content.
 
-    Block order is ``dft → response → molecule`` to match Adrian's
-    reference ``example_h2o_frequency_calc.in``.
+    Block order is ``dft → molecule → response`` to match existing fixtures.
 
     Parameters
     ----------
@@ -130,11 +117,11 @@ def madness_input(
         Complete MADNESS ``.in`` file content.
     """
     sections = [_render_dft_section(calc)]
+    sections.append("")
+    sections.append(_render_molecule_section(mol))
     if resp is not None:
         sections.append("")
         sections.append(_render_response_section(resp))
-    sections.append("")
-    sections.append(_render_molecule_section(mol))
 
     return "\n".join(sections) + "\n"
 

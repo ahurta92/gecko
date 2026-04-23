@@ -10,7 +10,6 @@ keyword arguments, then pass it to ``madness_input()`` to render.
 
 from __future__ import annotations
 
-from typing import Optional
 
 
 class Protocol:
