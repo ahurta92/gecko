@@ -34,8 +34,15 @@ class CalculationResult:
         Ground-state energy in Hartree.
     alpha : dict or None
         Polarizability data ``{"omega": [...], "ij": [...], "alpha": [...]}``.
+        The flat list has ``n_freqs * 9`` entries (9 tensor components per
+        frequency point).
     beta : dict or None
         Hyperpolarizability data.
+    raman : dict or None
+        Raman spectra data from MADQC ``calc_info.json``.  Contains keys
+        ``polarizability_derivatives``, ``polarizability_derivatives_normal_modes``,
+        ``polarization_frequencies``, ``raman_spectra``, and
+        ``vibrational_frequencies`` when present.
     raw : dict
         The full raw JSON data.
     """
@@ -48,6 +55,7 @@ class CalculationResult:
         self.energy: float | None = None
         self.alpha: dict | None = None
         self.beta: dict | None = None
+        self.raman: dict | None = None
 
     def __repr__(self) -> str:
         parts = [f"energy={self.energy}"]
@@ -57,6 +65,8 @@ class CalculationResult:
             parts.append("alpha=<present>")
         if self.beta:
             parts.append("beta=<present>")
+        if self.raman:
+            parts.append("raman=<present>")
         return f"CalculationResult({', '.join(parts)})"
 
 
@@ -141,13 +151,16 @@ def _parse_calc_info(data: dict, result: CalculationResult) -> None:
     if params:
         result.calc_params = CalculationParameters(**params)
 
-    # Alpha / beta from response tasks
+    # Alpha / beta from response tasks; raman from properties
     for t in tasks:
         resp = t.get("response", {})
         if "alpha" in resp:
             result.alpha = resp["alpha"]
         if "beta" in resp:
             result.beta = resp["beta"]
+        props = t.get("properties", {})
+        if "raman_spectra" in props:
+            result.raman = props["raman_spectra"]
 
 
 # ---------------------------------------------------------------------------
