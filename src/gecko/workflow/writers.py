@@ -393,6 +393,7 @@ def generate_calc_dir(
     frequencies: list[float] | None = None,
     xc: str = "hf",
     out_dir: Path,
+    tier: str | None = None,
     dft_params: Optional[DFTParams] = None,
     molecule_params: Optional[MoleculeParams] = None,
     response_params: Optional[ResponseParams] = None,

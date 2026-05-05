@@ -72,6 +72,7 @@ def _calc_init_command(args: argparse.Namespace) -> int:
         frequencies=freqs,
         xc=args.xc,
         out_dir=out_dir,
+        tier=getattr(args, "tier", None),
         dft_params=dft_params,
         molecule_params=mol_params,
         response_params=resp_params,
